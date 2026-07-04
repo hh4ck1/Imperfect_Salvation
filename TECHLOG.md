@@ -4263,3 +4263,30 @@ Verification:
 - Installed jar size: `807316` bytes, timestamp `2026-07-05 00:48:23`.
 - `releases/Imperfect_salvation-0.1.3.jar` SHA-256:
   `e7e77f9a40db140219244a056c9a55680b6814afdc13d16576e55d04d3c7b0f2`.
+
+
+## 2026-07-05 - Distress phrases in startup terminal error stream
+
+User request:
+- When the startup terminal begins printing errors, mix in phrases such as:
+  `HELP`, `OH LORD HELP ME`, `SAVE ME PLEASE`, `BEG YOU`, `FIND ME`.
+- Reserve a place for a link that will be provided later and should appear between error lines.
+
+Implemented:
+- Updated `ServerStartScreen.errorLine(...)`.
+- Expanded the error-line cycle from `18` to `28` entries.
+- Interleaved the requested distress phrases between the existing technical failure messages.
+- Added `DISTRESS_LINK = "[LINK_PENDING]"` as the single placeholder for the future supplied link.
+- The placeholder appears as:
+  - `[!] DISTRESS LINK: [LINK_PENDING]`;
+  - `[!] FIND ME / [LINK_PENDING]`.
+- Bumped project version to `0.1.4`.
+- Updated GitHub updater manifest to point at `releases/Imperfect_salvation-0.1.4.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Installed the rebuilt jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`.
+- Installed jar size: `807614` bytes, timestamp `2026-07-05 01:33:56`.
+- `releases/Imperfect_salvation-0.1.4.jar` SHA-256:
+  `04ff56680130c1019d074592d216620d865d39aede6f777e06a868f745569669`.
