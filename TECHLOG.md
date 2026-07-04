@@ -4195,3 +4195,39 @@ Verification:
 - Downloaded the GitHub raw jar and verified SHA-256:
   `612a8648e081642469081f4f8d67555a6114c21db82107a60a5d656365247217`.
 - Active updater config was written with `enabled=true` and the GitHub manifest URL.
+
+
+## 2026-07-05 - Startup updater relaunch fallback fix
+
+User report:
+- The GitHub update downloaded but did not replace the installed mod.
+
+Root cause:
+- The installed `0.1.0` updater reached the download step and left
+  `.imperfect_salvation_updates\Imperfect_salvation-0.1.1.jar.tmp`.
+- It failed before writing the restart helper:
+  `java.io.IOException: Current Java arguments are not available`.
+- On this TLauncher / Java runtime, `ProcessHandle.info().arguments()` is empty even though the full process command line is available.
+
+Implemented:
+- Bumped updater-distributed version to `0.1.2`.
+- Updated `StartupModUpdater.writeRestartScript(...)`:
+  - keeps the old `command + arguments` relaunch path when arguments are available;
+  - adds a fallback through `ProcessHandle.info().commandLine()`;
+  - the fallback restarts via `cmd.exe /d /c start "" <full command line>`;
+  - starts the PowerShell helper with `-WindowStyle Hidden`.
+- Rebuilt `Imperfect_salvation-0.1.2.jar`.
+- Updated GitHub `manifest.json`:
+  - `version`: `0.1.2`;
+  - `jar_url`: `https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/releases/Imperfect_salvation-0.1.2.jar`;
+  - `sha256`: `04cf7687c9171603b161dccbb165c5c15b4d3da4f370f99eff38b7cbaddd18c7`.
+- Pushed commit `a134d4e` to `origin/main`.
+- Because the already installed `0.1.0` updater cannot self-heal past this error, manually replaced the active modpack jar once with the fixed `0.1.2` build.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- GitHub manifest returned HTTP `200` and now points to `0.1.2`.
+- Active installed jar:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`
+  now has SHA-256 `04cf7687c9171603b161dccbb165c5c15b4d3da4f370f99eff38b7cbaddd18c7`.
+- Reading `fabric.mod.json` from the active installed jar confirms internal version `0.1.2`.
