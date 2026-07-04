@@ -4322,3 +4322,33 @@ Verification:
 - Installed jar size: `807819` bytes, timestamp `2026-07-05 01:40:50`.
 - `releases/Imperfect_salvation-0.1.5.jar` SHA-256:
   `4e4bdb76d64e3f9b78e63f83c679ebcc0ff3e7d6dc1d38904783877d6b25743d`.
+
+
+## 2026-07-05 - Replace TechReborn with Modern Industrialization
+
+User request:
+- Replace TechReborn with Modern Industrialization from Modrinth:
+  `https://modrinth.com/mod/modern-industrialization`.
+
+Implemented in active modpack:
+- Installed Modrinth `Modern Industrialization v1.8.6` for Minecraft `1.20.1` / Fabric:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Modern-Industrialization-1.8.6.jar`.
+- Verified the installed jar metadata:
+  - mod id: `modern_industrialization`;
+  - version: `1.8.6`;
+  - Minecraft dependency: `1.20.1`;
+  - required dependencies: Fabric API, Cloth Config, Team Reborn Energy.
+- Confirmed Fabric API and Cloth Config were already present in the active `mods` folder.
+- Team Reborn Energy is embedded in the Modern Industrialization jar as `META-INF/jars/energy-3.0.0.jar`.
+- Moved the TechReborn stack out of the active `mods` folder into:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\disabled_mods\replaced_by_modern_industrialization`.
+
+Moved out of active loading:
+- `RebornCore-5.8.15.jar`;
+- `TechReborn-5.8.15.jar`;
+- `TechRebornJEI-20.1.9.jar`.
+
+Notes:
+- Old TechReborn config files were left in `config\techreborn` for rollback safety.
+- Existing JEI / sound config entries that mention `techreborn` are stale preferences only; they do not load the mod jar.
+- No code rebuild was required for this modpack-only replacement.
