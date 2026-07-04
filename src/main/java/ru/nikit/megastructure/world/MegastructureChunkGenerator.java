@@ -149,6 +149,9 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 	) {
 	}
 
+	private record RiftBridgeRoomLink(int entryX, int bridgeZ, int bridgeY, long seed) {
+	}
+
 	public record OasisRenderHint(
 			int basinX,
 			int basinY,
@@ -3213,7 +3216,7 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		if (!accessTunnel && !junction) {
 			return null;
 		}
-		return bridgeConnectorCorridorState(x, dz, y, bridgeY, bridgeHash, junction && !accessTunnel);
+		return bridgeConnectorCorridorState(x, z, true, x, dz, y, bridgeY, bridgeHash, junction && !accessTunnel);
 	}
 
 	private BlockState riftBridgeRoomLinkState(int x, int y, int z) {
@@ -3227,31 +3230,61 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 			return null;
 		}
 
+		RiftBridgeRoomLink link = riftBridgeRoomLinkForDistrict(districtX, districtZ);
+		if (link == null) {
+			return null;
+		}
+		boolean legZ = Math.abs(x - link.entryX()) <= 10 && between(z, link.bridgeZ(), centerZ);
+		boolean legX = Math.abs(z - centerZ) <= 10 && between(x, link.entryX(), centerX);
+		if (!legZ && !legX) {
+			return null;
+		}
+		boolean corner = Math.abs(x - link.entryX()) <= 6 && Math.abs(z - centerZ) <= 6;
+		if (legZ) {
+			BlockState state = bridgeConnectorCorridorState(
+					x,
+					z,
+					false,
+					z,
+					x - link.entryX(),
+					y,
+					link.bridgeY(),
+					link.seed(),
+					corner
+			);
+			if (state != null) {
+				return state;
+			}
+		}
+		if (legX) {
+			BlockState state = bridgeConnectorCorridorState(
+					x,
+					z,
+					true,
+					x,
+					z - centerZ,
+					y,
+					link.bridgeY(),
+					link.seed() ^ 0x5F5E100L,
+					corner
+			);
+			if (state != null) {
+				return state;
+			}
+		}
+		return null;
+	}
+
+	private RiftBridgeRoomLink riftBridgeRoomLinkForDistrict(int districtX, int districtZ) {
+		int districtMinX = districtX * DISTRICT_SIZE;
+		int districtMinZ = districtZ * DISTRICT_SIZE;
 		int cell = settings.motifCellSize();
 		int firstStripe = MegastructureMath.floorDiv(districtMinX - 128, cell);
 		int lastStripe = MegastructureMath.floorDiv(districtMinX + DISTRICT_SIZE + 128, cell);
-		if (Math.abs(z - centerZ) > 5) {
-			boolean nearEntry = false;
-			for (int stripe = firstStripe; stripe <= lastStripe && !nearEntry; stripe++) {
-				long riftHash = riftStripeHash(stripe);
-				if (!isAcceptedRiftStripe(stripe, riftHash)) {
-					continue;
-				}
-				int width = MegastructureMath.range(
-						riftHash >>> 12,
-						Math.min(settings.riftMinWidth(), settings.riftMaxWidth()),
-						Math.max(settings.riftMinWidth(), settings.riftMaxWidth())
-				);
-				int riftCenterX = stripe * cell + cell / 2;
-				nearEntry = Math.abs(x - (riftCenterX - width / 2 - 72)) <= 5
-						|| Math.abs(x - (riftCenterX + width / 2 + 72)) <= 5;
-			}
-			if (!nearEntry) {
-				return null;
-			}
-		}
 		int firstBand = MegastructureMath.floorDiv(districtMinZ, 160);
 		int lastBand = MegastructureMath.floorDiv(districtMinZ + DISTRICT_SIZE - 1, 160);
+		RiftBridgeRoomLink selected = null;
+		long selectedPriority = 0L;
 		for (int stripe = firstStripe; stripe <= lastStripe; stripe++) {
 			long riftHash = riftStripeHash(stripe);
 			if (!isAcceptedRiftStripe(stripe, riftHash)) {
@@ -3265,11 +3298,11 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 			int riftCenterX = stripe * cell + cell / 2;
 			for (int side = -1; side <= 1; side += 2) {
 				int entryX = riftCenterX + side * (width / 2 + 72);
-				if (MegastructureMath.floorDiv(entryX, DISTRICT_SIZE) != districtX) {
-					continue;
-				}
-				for (int band = firstBand; band <= lastBand; band++) {
-					long bridgeHash = MegastructureMath.hash(activeWorldVariantSeed, stripe, band, 211);
+					if (MegastructureMath.floorDiv(entryX, DISTRICT_SIZE) != districtX) {
+						continue;
+					}
+					for (int band = firstBand; band <= lastBand; band++) {
+						long bridgeHash = MegastructureMath.hash(activeWorldVariantSeed, stripe, band, 211);
 					if (Math.floorMod(bridgeHash, 4) == 0) {
 						continue;
 					}
@@ -3280,28 +3313,15 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 					int bridgeY = settings.floorY() + MegastructureMath.range(
 							bridgeHash >>> 16, 112, Math.max(176, getWorldHeight() - 160)
 					);
-					boolean legZ = Math.abs(x - entryX) <= 8 && between(z, bridgeZ, centerZ);
-					boolean legX = Math.abs(z - centerZ) <= 8 && between(x, entryX, centerX);
-					if (!legZ && !legX) {
-						continue;
-					}
-					boolean corner = Math.abs(x - entryX) <= 5 && Math.abs(z - centerZ) <= 5;
-					if (legZ) {
-						BlockState state = bridgeConnectorCorridorState(z, x - entryX, y, bridgeY, bridgeHash, corner);
-						if (state != null) {
-							return state;
-						}
-					}
-					if (legX) {
-						BlockState state = bridgeConnectorCorridorState(x, z - centerZ, y, bridgeY, bridgeHash ^ 0x5F5E100L, corner);
-						if (state != null) {
-							return state;
-						}
+					long priority = MegastructureMath.hash(activeWorldVariantSeed, entryX, bridgeZ, 2237);
+					if (selected == null || Long.compareUnsigned(priority, selectedPriority) < 0) {
+						selected = new RiftBridgeRoomLink(entryX, bridgeZ, bridgeY, bridgeHash);
+						selectedPriority = priority;
 					}
 				}
 			}
 		}
-		return null;
+		return selected;
 	}
 
 	private BlockState connectorNetworkState(int x, int y, int z) {
@@ -3454,105 +3474,99 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		return found && maxLevel > minLevel && y >= minLevel + 1 && y <= maxLevel + 7;
 	}
 
-	private BlockState bridgeConnectorCorridorState(int along, int cross, int y, int baseY, long styleSeed, boolean junction) {
-		/*
-		 * These are the passages that receive a traveller from a suspended bridge and carry
-		 * them back into the enclosing wall.  They are deliberately much denser than the
-		 * open bridge: recessed central grate, side walkways, low service ledges, tiled walls,
-		 * heavy ceiling ribs and small ceiling lamps.
-		 */
+	private BlockState bridgeConnectorCorridorState(
+			int x,
+			int z,
+			boolean xAxis,
+			int along,
+			int cross,
+			int y,
+			int baseY,
+			long styleSeed,
+			boolean junction
+	) {
 		int relY = y - baseY;
 		int absCross = Math.abs(cross);
-		int outerWall = junction ? 8 : 6;
-		int innerWall = outerWall - 1;
-		if (relY < 0 || relY > 8 || absCross > outerWall + 2) {
+		int outerWall = junction ? 12 : 10;
+		int shellStart = outerWall - 2;
+		if (relY < 0 || relY > 8 || absCross > outerWall) {
 			return null;
 		}
 
-		boolean rib = Math.floorMod(along + (int) (styleSeed >>> 8), 10) == 0;
-		boolean lamp = Math.floorMod(along + (int) (styleSeed >>> 20), 14) == 0;
-		boolean portalFrame = Math.floorMod(along + (int) (styleSeed >>> 28), junction ? 12 : 18) == 0;
-		boolean alcove = !rib && Math.floorMod(along + (int) styleSeed, 20) >= 4
+		boolean rib = Math.floorMod(along + (int) (styleSeed >>> 8), 18) <= 1;
+		boolean bulkhead = Math.floorMod(along + (int) (styleSeed >>> 28), 72) <= 2;
+		boolean lampBay = Math.floorMod(along + (int) (styleSeed >>> 20) + 9, 36) <= 1;
+		boolean servicePipe = !rib && !bulkhead
+				&& Math.floorMod(along + (int) styleSeed, 20) >= 5
 				&& Math.floorMod(along + (int) styleSeed, 20) <= 13;
-		boolean voidWindow = !junction
+		boolean window = !junction
 				&& (relY == 3 || relY == 4)
-				&& absCross >= outerWall
-				&& absCross <= outerWall + 2
+				&& absCross >= shellStart
 				&& !rib
-				&& !portalFrame
-				&& Math.floorMod(along + (int) (styleSeed >>> 33), 18) >= 5
-				&& Math.floorMod(along + (int) (styleSeed >>> 33), 18) <= 10;
-
-		if (voidWindow) {
-			return BlockPalette.AIR;
-		}
+				&& !bulkhead
+				&& bridgeConnectorWallFacesOpenVoid(x, y, z, xAxis, cross)
+				&& Math.floorMod(along, 14) >= 4
+				&& Math.floorMod(along, 14) <= 9;
 
 		if (relY == 0) {
 			if (absCross <= 1) {
 				return BlockPalette.GRATE;
 			}
-			if (absCross <= 3) {
-				return BlockPalette.WALKWAY;
+			if (absCross <= 7) {
+				return Math.floorMod(along + cross, 11) == 0 ? BlockPalette.CRACKED_PANEL : BlockPalette.WALKWAY;
 			}
-			if (absCross <= innerWall) {
+			return absCross <= 9 ? BlockPalette.FOUNDATION : BlockPalette.DARK_STONE;
+		}
+		if (relY == 1) {
+			if (absCross == 6) {
 				return BlockPalette.FOUNDATION;
 			}
-			return BlockPalette.DARK_STONE;
+			if (absCross >= shellStart && servicePipe) {
+				return BlockPalette.PIPE;
+			}
 		}
-
-		// Raised edging beside the service channel, leaving two clear walk lanes.
-		if (relY == 1 && absCross == 2) {
-			return BlockPalette.FOUNDATION;
-		}
-		// Low built-in conduits / benches alongside the wall, like the reference tunnel.
-		if (relY == 1 && (absCross == innerWall || absCross == innerWall - 1)) {
-			return rib ? BlockPalette.FOUNDATION : BlockPalette.DARK_STONE;
-		}
-		if (relY >= 2 && relY <= 5 && portalFrame && absCross >= innerWall - 1) {
-			return BlockPalette.FOUNDATION;
-		}
-		if (relY == 2 && absCross == innerWall) {
-			return rib ? BlockPalette.FOUNDATION : BlockPalette.WALL_PANEL;
-		}
-		if (relY >= 3 && relY <= 4 && alcove && absCross == innerWall - 1) {
-			return Math.floorMod(along, 6) <= 1 ? BlockPalette.PIPE : BlockPalette.DARK_STONE;
-		}
-		if (relY >= 2 && relY <= 4 && absCross == innerWall - 1 && !alcove) {
-			return rib ? BlockPalette.FOUNDATION : BlockPalette.PIPE;
-		}
-
-		// Continuous outer shell, interrupted visually by vertical structural ribs.
-		if (relY >= 1 && relY <= 6 && absCross == outerWall) {
-			if (voidWindow) {
+		if (relY >= 1 && relY <= 6 && absCross >= shellStart) {
+			if (window) {
 				return BlockPalette.AIR;
 			}
-			return rib ? BlockPalette.FOUNDATION : BlockPalette.WALL_PANEL;
+			return rib || bulkhead ? BlockPalette.FOUNDATION : BlockPalette.WALL_PANEL;
 		}
-		if (relY >= 2 && relY <= 6 && rib && absCross == innerWall) {
-			return BlockPalette.FOUNDATION;
+		if (relY == 2 && absCross == shellStart - 1) {
+			return rib ? BlockPalette.FOUNDATION : BlockPalette.DARK_STONE;
 		}
-
-		// Lower ceiling and cross-ribs make it read as a corridor entering the wall,
-		// not as a continuation of the exposed bridge.
-		if (relY == 6 && rib && absCross <= innerWall) {
+		if (relY >= 3 && relY <= 4 && absCross == shellStart - 1 && servicePipe) {
+			return Math.floorMod(along + relY, 6) <= 1 ? BlockPalette.PIPE : BlockPalette.DARK_STONE;
+		}
+		if (relY == 6 && absCross <= shellStart && (rib || bulkhead)) {
 			return BlockPalette.FOUNDATION;
 		}
 		if (relY == 7) {
-			if (absCross == 0 && lamp) {
+			if (absCross == 0 && lampBay) {
 				return BlockPalette.LAMP;
 			}
-			if (portalFrame && absCross <= innerWall) {
-				return BlockPalette.FOUNDATION;
-			}
-			if (absCross <= innerWall - 1) {
-				return rib ? BlockPalette.FOUNDATION : BlockPalette.LIGHT_STONE;
+			if (absCross <= shellStart) {
+				return rib || bulkhead || junction ? BlockPalette.FOUNDATION : BlockPalette.LIGHT_STONE;
 			}
 			return BlockPalette.FOUNDATION;
 		}
-		if (relY == 8 && absCross <= innerWall) {
+		if (relY == 8 && absCross <= shellStart + 1 && (rib || bulkhead || junction)) {
 			return BlockPalette.FOUNDATION;
 		}
 		return BlockPalette.AIR;
+	}
+
+	private boolean bridgeConnectorWallFacesOpenVoid(int x, int y, int z, boolean xAxis, int cross) {
+		int side = cross < 0 ? -1 : 1;
+		int stepX = xAxis ? 0 : side;
+		int stepZ = xAxis ? side : 0;
+		for (int step = 1; step <= 6; step++) {
+			int sampleX = x + stepX * step;
+			int sampleZ = z + stepZ * step;
+			if (isOpenVoidForConnectorWindow(sampleX, y, sampleZ)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private int connectorNetworkY() {

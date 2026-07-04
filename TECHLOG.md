@@ -4231,3 +4231,35 @@ Verification:
   `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`
   now has SHA-256 `04cf7687c9171603b161dccbb165c5c15b4d3da4f370f99eff38b7cbaddd18c7`.
 - Reading `fabric.mod.json` from the active installed jar confirms internal version `0.1.2`.
+
+
+## 2026-07-05 - Bridge-wall tunnel routing and spawn-style corridor profile
+
+User report:
+- Tunnels that leave spawn look acceptable, but the wall-entry tunnels generated from bridge mouths look wrong.
+- Bridge-wall tunnels are missing windows, look crooked, and can create loops through a single room.
+
+Implemented:
+- Added a deterministic `RiftBridgeRoomLink` selection per district.
+- `riftBridgeRoomLinkState(...)` now uses one selected bridge-to-room link per district instead of drawing every possible bridge-band / rift-stripe link through the same district.
+- This removes the common multi-link L-route overlap that produced room loops.
+- Reworked `bridgeConnectorCorridorState(...)` to receive absolute coordinates and corridor axis, not only local along/cross coordinates.
+- Bridge-wall corridors now use the same overall industrial tunnel profile as the spawn / primary railway corridor:
+  - wider 10-block shell;
+  - central grated service channel;
+  - broad side walk lanes;
+  - heavy rib / bulkhead cadence;
+  - ceiling light bays;
+  - side service pipes;
+  - wall windows only when the sampled side actually faces open void.
+- Corner / junction sections are slightly widened but use the same material language, so bridge transitions should no longer read as separate broken mini-tunnels.
+- Bumped project version to `0.1.3`.
+- Updated GitHub updater manifest to point at `releases/Imperfect_salvation-0.1.3.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Installed the rebuilt jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`.
+- Installed jar size: `807316` bytes, timestamp `2026-07-05 00:48:23`.
+- `releases/Imperfect_salvation-0.1.3.jar` SHA-256:
+  `e7e77f9a40db140219244a056c9a55680b6814afdc13d16576e55d04d3c7b0f2`.
