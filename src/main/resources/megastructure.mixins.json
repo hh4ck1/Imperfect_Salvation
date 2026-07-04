@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "ru.nikit.megastructure.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "AbstractBlockSaplingDropMixin",
+    "FurnaceMinecartSpeedMixin",
+    "MinecartPhysicsMixin",
+    "VehicleEntityMixin"
+  ],
+  "client": [
+    "client.BackgroundRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
