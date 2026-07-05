@@ -4352,3 +4352,26 @@ Notes:
 - Old TechReborn config files were left in `config\techreborn` for rollback safety.
 - Existing JEI / sound config entries that mention `techreborn` are stale preferences only; they do not load the mod jar.
 - No code rebuild was required for this modpack-only replacement.
+
+
+## 2026-07-05 - Distress link inserted into startup terminal errors
+
+User request:
+- Replace the startup terminal distress-link placeholder with the supplied Google Drive URL:
+  `https://drive.google.com/file/d/1J0vgRLVbo4PEXXGE_tkav-As_s7ZY0M1/view?usp=sharing`.
+
+Implemented:
+- Replaced `ServerStartScreen.DISTRESS_LINK`.
+- The startup error stream now prints the supplied URL in:
+  - `[!] DISTRESS LINK: ...`;
+  - `[!] FIND ME / ...`.
+- Bumped project version to `0.1.6`.
+- Updated GitHub updater manifest to point at `releases/Imperfect_salvation-0.1.6.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Installed the rebuilt jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`.
+- Installed jar size: `807885` bytes, timestamp `2026-07-05 23:28:54`.
+- `releases/Imperfect_salvation-0.1.6.jar` SHA-256:
+  `c83e63294ba973d1af8f343ff953485e5da2ea99dbf0e5b8f8ddcb414480800a`.
