@@ -14,6 +14,7 @@ public final class StartupModUpdaterSelfTest {
 		assertRuntimeFallbackCanBuildRelaunchCommand();
 		assertPowershellRelaunchUsesArgumentArray();
 		assertOriginalCommandLineHasRelaunchPriority();
+		assertTransientHttpStatusesAreRetried();
 		System.out.println("StartupModUpdater self-test passed");
 	}
 
@@ -78,6 +79,14 @@ public final class StartupModUpdaterSelfTest {
 		require(content.contains("start \"\" "), "cmd start relaunch should be used for exact command line");
 		require(content.contains("original command line"), "script should log exact command-line relaunch");
 		require(!content.contains("$argsList = @("), "argument array fallback should not override exact command line");
+	}
+
+	private static void assertTransientHttpStatusesAreRetried() {
+		require(UpdaterHttpSupport.shouldRetryHttp(408), "request timeout should be retried");
+		require(UpdaterHttpSupport.shouldRetryHttp(429), "rate limit should be retried");
+		require(UpdaterHttpSupport.shouldRetryHttp(500), "server error should be retried");
+		require(!UpdaterHttpSupport.shouldRetryHttp(404), "not found should not be retried");
+		require(!UpdaterHttpSupport.shouldRetryHttp(200), "success should not be retried");
 	}
 
 	private static void require(boolean condition, String message) {

@@ -28,10 +28,11 @@ import org.slf4j.LoggerFactory;
 import ru.nikit.megastructure.MegastructureMod;
 
 public final class StartupModUpdater {
-	private static final Logger LOGGER = LoggerFactory.getLogger("megastructure/updater");
 	private static final String CONFIG_FILE = "imperfect_salvation_updater.properties";
 	private static final String MANIFEST_URL_PROPERTY = "imperfect_salvation.update_manifest_url";
 	private static final int DEFAULT_TIMEOUT_SECONDS = 8;
+	private static final int MAX_HTTP_ATTEMPTS = 4;
+	private static final String USER_AGENT = "Imperfect-Salvation-Updater/1.0";
 
 	private StartupModUpdater() {
 	}
@@ -65,12 +66,12 @@ public final class StartupModUpdater {
 			verifySha256(downloadedJar, manifest.sha256());
 			Path destinationJar = targetJarPath(currentJar, manifest);
 			Path script = writeUpdateRestartScript(currentJar, downloadedJar, destinationJar);
-			LOGGER.info("Installed update helper for Imperfect Salvation {} -> {}. Restarting Minecraft.",
+			logger().info("Installed update helper for Imperfect Salvation {} -> {}. Restarting Minecraft.",
 					currentVersion, manifest.version());
 			startHelper(script);
 			shutdown.run();
 		} catch (Exception exception) {
-			LOGGER.warn("Silent update check failed", exception);
+			logger().warn("Silent update check failed", exception);
 		}
 	}
 
@@ -91,11 +92,12 @@ public final class StartupModUpdater {
 				.connectTimeout(Duration.ofSeconds(config.timeoutSeconds()))
 				.followRedirects(HttpClient.Redirect.NORMAL)
 				.build();
-		HttpRequest request = HttpRequest.newBuilder(URI.create(config.manifestUrl()))
-				.timeout(Duration.ofSeconds(config.timeoutSeconds()))
-				.GET()
-				.build();
-		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		URI manifestUri = URI.create(config.manifestUrl());
+		HttpResponse<String> response = sendStringWithRetries(
+				client,
+				manifestUri,
+				Duration.ofSeconds(config.timeoutSeconds())
+		);
 		if (response.statusCode() < 200 || response.statusCode() >= 300) {
 			throw new IOException("Manifest returned HTTP " + response.statusCode());
 		}
@@ -117,16 +119,74 @@ public final class StartupModUpdater {
 				.connectTimeout(Duration.ofSeconds(config.timeoutSeconds()))
 				.followRedirects(HttpClient.Redirect.NORMAL)
 				.build();
-		HttpRequest request = HttpRequest.newBuilder(URI.create(manifest.jarUrl()))
-				.timeout(Duration.ofSeconds(config.timeoutSeconds() * 2L))
-				.GET()
-				.build();
-		HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(target));
+		URI jarUri = URI.create(manifest.jarUrl());
+		HttpResponse<Path> response = sendFileWithRetries(
+				client,
+				jarUri,
+				target,
+				Duration.ofSeconds(config.timeoutSeconds() * 2L)
+		);
 		if (response.statusCode() < 200 || response.statusCode() >= 300) {
 			Files.deleteIfExists(target);
 			throw new IOException("Jar download returned HTTP " + response.statusCode());
 		}
 		return target;
+	}
+
+	private static HttpResponse<String> sendStringWithRetries(
+			HttpClient client,
+			URI uri,
+			Duration timeout
+	) throws IOException, InterruptedException {
+		HttpResponse<String> response = null;
+		for (int attempt = 1; attempt <= MAX_HTTP_ATTEMPTS; attempt++) {
+			response = client.send(
+					httpRequest(uri, timeout).build(),
+					HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+			);
+			if (!UpdaterHttpSupport.shouldRetryHttp(response.statusCode()) || attempt == MAX_HTTP_ATTEMPTS) {
+				return response;
+			}
+			sleepBeforeRetry(attempt, uri, response.statusCode());
+		}
+		return response;
+	}
+
+	private static HttpResponse<Path> sendFileWithRetries(
+			HttpClient client,
+			URI uri,
+			Path target,
+			Duration timeout
+	) throws IOException, InterruptedException {
+		HttpResponse<Path> response = null;
+		for (int attempt = 1; attempt <= MAX_HTTP_ATTEMPTS; attempt++) {
+			Files.deleteIfExists(target);
+			response = client.send(
+					httpRequest(uri, timeout).build(),
+					HttpResponse.BodyHandlers.ofFile(target)
+			);
+			if (!UpdaterHttpSupport.shouldRetryHttp(response.statusCode()) || attempt == MAX_HTTP_ATTEMPTS) {
+				return response;
+			}
+			Files.deleteIfExists(target);
+			sleepBeforeRetry(attempt, uri, response.statusCode());
+		}
+		return response;
+	}
+
+	private static HttpRequest.Builder httpRequest(URI uri, Duration timeout) {
+		return HttpRequest.newBuilder(uri)
+				.timeout(timeout)
+				.header("User-Agent", USER_AGENT)
+				.header("Accept", "application/octet-stream, application/json;q=0.9, */*;q=0.8")
+				.GET();
+	}
+
+	private static void sleepBeforeRetry(int attempt, URI uri, int statusCode) throws InterruptedException {
+		long delayMillis = 600L * attempt * attempt;
+		logger().warn("Update download from {} returned HTTP {}. Retrying in {} ms.",
+				uri, statusCode, delayMillis);
+		Thread.sleep(delayMillis);
 	}
 
 	private static void verifySha256(Path file, String expectedHash) throws IOException {
@@ -153,10 +213,18 @@ public final class StartupModUpdater {
 			return false;
 		}
 		Path script = writeRenameRestartScript(currentJar, destinationJar);
-		LOGGER.info("Installed rename helper for Imperfect Salvation jar {} -> {}. Restarting Minecraft.",
+		logger().info("Installed rename helper for Imperfect Salvation jar {} -> {}. Restarting Minecraft.",
 				currentJar.getFileName(), destinationJar.getFileName());
 		startHelper(script);
 		return true;
+	}
+
+	private static Logger logger() {
+		return LoggerHolder.LOGGER;
+	}
+
+	private static final class LoggerHolder {
+		private static final Logger LOGGER = LoggerFactory.getLogger("megastructure/updater");
 	}
 
 	private static Path targetJarPath(Path currentJar, UpdateManifest manifest) {

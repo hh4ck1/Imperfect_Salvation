@@ -4695,3 +4695,35 @@ Verification:
   `StartupModUpdater self-test passed`.
 - `releases/Imperfect_salvation-0.1.17.jar` SHA-256:
   `7883419ef4d957f0187edbabc78749e33a2dc5748241623000f3bae949593a95`.
+
+
+## 2026-07-06 - Fix updater HTTP 429 jar download failure
+
+User report:
+- Minecraft started normally, but the local mod jar stayed on the old version.
+
+Observed:
+- Active local pack still contained `Imperfect_salvation-0.1.16.jar`.
+- `latest.log` showed the updater did run, read the manifest, then failed before helper creation:
+  `java.io.IOException: Jar download returned HTTP 429`.
+- The failed URL was the GitHub `github.com/.../raw/...` jar link.
+
+Implemented:
+- Bumped project version to `0.1.18`.
+- Changed the manifest jar URL to direct `raw.githubusercontent.com` to avoid the extra GitHub raw redirect path.
+- Updated the active local updater config to read the manifest from direct `raw.githubusercontent.com`.
+- Added updater HTTP headers:
+  - `User-Agent: Imperfect-Salvation-Updater/1.0`;
+  - `Accept: application/octet-stream, application/json;q=0.9, */*;q=0.8`.
+- Added retries for transient HTTP statuses:
+  `408`, `429`, and `5xx`.
+- File retries delete the partial `.tmp` jar before trying again.
+- Added self-test coverage for retry status classification.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Local active pack remains intentionally on `Imperfect_salvation-0.1.16.jar` for the next real startup update test.
+- `releases/Imperfect_salvation-0.1.18.jar` SHA-256:
+  `a009f7a5496eaf420efd880a57ec60b2b163149a792d1cd71cacf08e5e093df7`.
