@@ -4457,3 +4457,36 @@ Verification:
 - Active game folder was intentionally not manually updated during this release preparation.
 - `releases/Imperfect_salvation-0.1.8.jar` SHA-256:
   `6807c9d621414c785d123f842c95115644c93a4941d39038ad08ddd1ed2d39bb`.
+
+
+## 2026-07-06 - Bootstrap active pack for updater test
+
+User request:
+- Make the automatic updater system actually testable after the broken `0.1.6` updater could not self-apply.
+
+Implemented:
+- Bumped project version to `0.1.9`.
+- Added a small updater robustness fix:
+  existing `.tmp` files for the target version are deleted before a new download starts.
+- Built and published `releases/Imperfect_salvation-0.1.9.jar`.
+- Updated GitHub updater manifest to:
+  - `version`: `0.1.9`;
+  - `file_name`: `Imperfect_salvation-0.1.9.jar`.
+- Prepared the active modpack for a real test by bootstrapping the fixed updater:
+  - moved the broken active `0.1.6` jar out of active loading;
+  - installed `Imperfect_salvation-0.1.8.jar` into the active `mods` folder.
+
+Expected test flow:
+- Minecraft starts with local `0.1.8`.
+- `0.1.8` reads GitHub manifest `0.1.9`.
+- It downloads `Imperfect_salvation-0.1.9.jar.tmp`.
+- It writes the apply-update helper script using the runtime relaunch fallback if ProcessHandle launch data is unavailable.
+- Minecraft exits.
+- Helper removes `Imperfect_salvation-0.1.8.jar`, moves the tmp jar to `Imperfect_salvation-0.1.9.jar`, and starts Minecraft again.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- `releases/Imperfect_salvation-0.1.9.jar` SHA-256:
+  `c1d5cb40c72641de7637318bb4c1fe40e77774053391445bd122726275c00df4`.

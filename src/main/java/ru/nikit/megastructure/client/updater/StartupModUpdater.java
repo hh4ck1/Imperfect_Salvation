@@ -111,6 +111,7 @@ public final class StartupModUpdater {
 		Path updateDir = FabricLoader.getInstance().getGameDir().resolve(".imperfect_salvation_updates");
 		Files.createDirectories(updateDir);
 		Path target = updateDir.resolve("Imperfect_salvation-" + sanitizeFilePart(manifest.version()) + ".jar.tmp");
+		Files.deleteIfExists(target);
 		HttpClient client = HttpClient.newBuilder()
 				.connectTimeout(Duration.ofSeconds(config.timeoutSeconds()))
 				.followRedirects(HttpClient.Redirect.NORMAL)
