@@ -4358,7 +4358,7 @@ Notes:
 
 User request:
 - Replace the startup terminal distress-link placeholder with the supplied Google Drive URL:
-  `https://drive.google.com/file/d/1J0vgRLVbo4PEXXGE_tkav-As_s7ZY0M1/view?usp=sharing`.
+  `https://drive.google.com/file/d/1y6bfrYROhkrzxAxrIgoJBeFRc-KTHI8g/view?usp=sharing`.
 
 Implemented:
 - Replaced `ServerStartScreen.DISTRESS_LINK`.
@@ -4761,3 +4761,32 @@ Verification:
   `StartupModUpdater self-test passed`.
 - `releases/Imperfect_salvation-0.1.20.jar` SHA-256:
   `8c258b037c0543d8414f033027d499820b818a788ac4e467b263c126462ce587`.
+
+
+## 2026-07-07 - Distress link replacement and stable installed jar name
+
+User request:
+- Replace the startup terminal distress-link URL with:
+  `https://drive.google.com/file/d/1y6bfrYROhkrzxAxrIgoJBeFRc-KTHI8g/view?usp=sharing`.
+- Ensure the old Drive URL is not left in the error text.
+- For the next auto-update test, do not replace the local mod jar manually.
+- Make the installed mod jar name stable in user folders so updates are not visible from the filename.
+
+Implemented:
+- Replaced `ServerStartScreen.DISTRESS_LINK` with the new Drive URL.
+- Removed the old Drive id from tracked source/documentation text.
+- Bumped project version to `0.1.21`.
+- Updated `manifest.json` so the updater downloads the versioned release asset:
+  `releases/Imperfect_salvation-0.1.21.jar`.
+- Set manifest `file_name` to:
+  `Imperfect_salvation.jar`.
+- The updater will therefore replace the user's current jar with a stable unversioned filename while still using metadata version checks internally.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Confirmed the old Drive id no longer appears in tracked source/techlog text.
+- Local active pack was intentionally left unchanged for the real update test.
+- `releases/Imperfect_salvation-0.1.21.jar` SHA-256:
+  `16e6205c93311df2c89e6dc6e0373962df029106d6ac1df8798995d1462068e9`.

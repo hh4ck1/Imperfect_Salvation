@@ -18,7 +18,7 @@ public final class ServerStartScreen extends Screen {
 	private static final int TERMINAL_SHUTDOWN_TICKS = 420;
 	private static final int LINE_HEIGHT = 10;
 	private static final int NORMAL_LINE_COUNT = 104;
-	private static final String DISTRESS_LINK = "https://drive.google.com/file/d/1J0vgRLVbo4PEXXGE_tkav-As_s7ZY0M1/view?usp=sharing";
+	private static final String DISTRESS_LINK = "https://drive.google.com/file/d/1y6bfrYROhkrzxAxrIgoJBeFRc-KTHI8g/view?usp=sharing";
 
 	public ServerStartScreen() {
 		super(Text.empty());
