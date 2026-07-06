@@ -4604,3 +4604,34 @@ Implemented:
 Verification:
 - Alternative GitHub raw URL returned HTTP `200`.
 - Active local pack remains on `Imperfect_salvation-0.1.12.jar`, ready to retry the same `0.1.13` update.
+
+
+## 2026-07-06 - CDN manifest plus GitHub jar download
+
+User report:
+- The update still did not apply after switching the jar URL.
+
+Observed:
+- `latest.log` showed the updater reached manifest processing but failed before helper creation:
+  `java.io.IOException: Jar download returned HTTP 429`.
+- The active pack remained on `Imperfect_salvation-0.1.12.jar`.
+- `.imperfect_salvation_updates` was empty, confirming no helper was created for this run.
+- Direct checks showed:
+  - `github.com/.../raw/main/manifest.json` could also return `429`;
+  - `cdn.jsdelivr.net/gh/.../manifest.json` returned the manifest successfully;
+  - jsDelivr refused the `.jar` asset;
+  - `github.com/.../raw/main/releases/Imperfect_salvation-0.1.13.jar` downloaded successfully and matched SHA-256.
+
+Implemented in active local pack:
+- Updated `config\imperfect_salvation_updater.properties`.
+- `manifest_url` now points at:
+  `https://cdn.jsdelivr.net/gh/hh4ck1/Imperfect_Salvation@main/manifest.json`.
+- The manifest still points the jar download at:
+  `https://github.com/hh4ck1/Imperfect_Salvation/raw/main/releases/Imperfect_salvation-0.1.13.jar`.
+
+Verification:
+- Full updater download chain was tested outside Minecraft using the same config URL.
+- Manifest returned version `0.1.13`.
+- Jar downloaded successfully.
+- Downloaded jar SHA-256 matched manifest:
+  `50e6596161ed0595768c5245f4b1178996646f297b9f8b91a34575b975b376c3`.
