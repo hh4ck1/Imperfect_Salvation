@@ -55,6 +55,7 @@ public final class StartupModUpdaterSelfTest {
 		require(content.contains("$argsList = @("), "script should use PowerShell argument array");
 		require(content.contains("'Project Eden'"), "script should quote spaced argument");
 		require(content.contains("-WorkingDirectory 'C:\\Games\\Project Imperfect Salvation'"), "working directory missing");
+		require(!content.contains("'Project Eden',\n)"), "last argument should not have a trailing comma");
 	}
 
 	private static void require(boolean condition, String message) {

@@ -4635,3 +4635,39 @@ Verification:
 - Jar downloaded successfully.
 - Downloaded jar SHA-256 matched manifest:
   `50e6596161ed0595768c5245f4b1178996646f297b9f8b91a34575b975b376c3`.
+
+
+## 2026-07-06 - Fix updater helper PowerShell parsing
+
+User report:
+- Minecraft closed, but the mod was still not replaced.
+
+Observed:
+- Active pack still contained `Imperfect_salvation-0.1.12.jar`.
+- The update cache contained:
+  - `apply-update-46992.ps1`;
+  - `Imperfect_salvation-0.1.13.jar.tmp`.
+- The tmp jar SHA-256 matched the expected update.
+- The helper log file did not exist, which meant PowerShell failed before executing the first `Write-Step`.
+- Parsing the helper script manually produced:
+  `Missing expression after ','`.
+- Root cause:
+  the generated PowerShell `$argsList = @(...)` had a trailing comma after the last argument.
+
+Implemented:
+- Bumped project version to `0.1.15`.
+- Fixed `UpdaterRelaunchSupport.appendArgumentListRelaunch`.
+- It now writes commas only between array items, never after the final argument.
+- Added self-test coverage to reject a trailing comma before the closing `)`.
+- Active local pack was bootstrapped to:
+  `Imperfect_salvation-0.1.14.jar`.
+- GitHub manifest now targets:
+  `Imperfect_salvation-0.1.15.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Old broken `apply-update-46992.ps1` and `Imperfect_salvation-0.1.13.jar.tmp` were removed from the active update cache.
+- `releases/Imperfect_salvation-0.1.15.jar` SHA-256:
+  `45578ea3adba36a79e35f93c8500f31ace820e8d23719fa84f2e04f5f1214e95`.

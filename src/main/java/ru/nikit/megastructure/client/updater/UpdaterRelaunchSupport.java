@@ -43,8 +43,12 @@ final class UpdaterRelaunchSupport {
 			Path gameDir
 	) {
 		content.append("$argsList = @(\n");
-		for (String argument : arguments) {
-			content.append("\t").append(psQuote(argument)).append(",\n");
+		for (int i = 0; i < arguments.size(); i++) {
+			content.append("\t").append(psQuote(arguments.get(i)));
+			if (i + 1 < arguments.size()) {
+				content.append(",");
+			}
+			content.append("\n");
 		}
 		content.append(")\n");
 		content.append("Start-Process -FilePath ").append(psQuote(javaCommand))
