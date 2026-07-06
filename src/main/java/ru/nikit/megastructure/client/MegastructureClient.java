@@ -22,7 +22,7 @@ import ru.nikit.megastructure.traversal.TraversalContent;
 public final class MegastructureClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
-		StartupModUpdater.checkOnStartup(() -> net.minecraft.client.MinecraftClient.getInstance().scheduleStop());
+		StartupModUpdater.checkOnStartup(() -> System.exit(0));
 		BlockRenderLayerMap.INSTANCE.putBlock(TraversalContent.ROPE_BLOCK, RenderLayer.getCutout());
 		BlockRenderLayerMap.INSTANCE.putBlock(TraversalContent.ANCHOR_BLOCK, RenderLayer.getCutout());
 		BlockRenderLayerMap.INSTANCE.putBlock(PrimitiveSurvivalContent.LOOSE_STONE_BLOCK, RenderLayer.getCutout());

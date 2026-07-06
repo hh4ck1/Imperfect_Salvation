@@ -4540,3 +4540,40 @@ Verification:
   - PowerShell argument-array generation.
 - `releases/Imperfect_salvation-0.1.11.jar` SHA-256:
   `7a008b57084744c48a48d2b4985beace11b5bdcbdcef0a34ff1e9e2c580201bd`.
+
+
+## 2026-07-06 - Force-stop updater helper path
+
+User report:
+- The updater still did not replace the jar after the `0.1.10` -> `0.1.11` test.
+
+Observed:
+- `latest.log` showed the updater reached:
+  `Installed update helper for Imperfect Salvation 0.1.10 -> 0.1.11. Restarting Minecraft.`
+- `.imperfect_salvation_updates` contained:
+  - `apply-update-27264.ps1`;
+  - `Imperfect_salvation-0.1.11.jar.tmp`.
+- The Minecraft Java process `27264` was still alive after the update request.
+- Therefore helper script was blocked at process release and could not move the jar while the old process still held it loaded.
+
+Implemented:
+- Bumped project version to `0.1.13`.
+- Client updater shutdown now uses `System.exit(0)` after starting the helper.
+- Helper scripts no longer wait forever:
+  - they wait up to 12 seconds for the exact source Java process PID;
+  - if it is still alive, they log the condition and force-stop that PID;
+  - after a short delay, they continue with jar replacement and relaunch.
+- This remains path-agnostic:
+  the helper uses only the current installation paths discovered at runtime.
+- Active local pack was bootstrapped to:
+  `Imperfect_salvation-0.1.12.jar`.
+- GitHub manifest now targets:
+  `Imperfect_salvation-0.1.13.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Stale `0.1.10` update helper and tmp jar were removed from the active pack before the new test setup.
+- `releases/Imperfect_salvation-0.1.13.jar` SHA-256:
+  `50e6596161ed0595768c5245f4b1178996646f297b9f8b91a34575b975b376c3`.

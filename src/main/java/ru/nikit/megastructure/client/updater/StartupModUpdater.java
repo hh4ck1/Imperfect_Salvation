@@ -182,8 +182,7 @@ public final class StartupModUpdater {
 		content.append("$ErrorActionPreference = 'Stop'\n");
 		appendScriptLogHeader(content, log);
 		content.append("try {\n");
-		content.append("Write-Step 'waiting for Minecraft process ").append(current.pid()).append("'\n");
-		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
+		appendProcessRelease(content, current.pid());
 		content.append("Start-Sleep -Milliseconds 750\n");
 		if (!currentJar.equals(destinationJar)) {
 			content.append("Write-Step 'removing old jar'\n");
@@ -218,8 +217,7 @@ public final class StartupModUpdater {
 		content.append("$ErrorActionPreference = 'Stop'\n");
 		appendScriptLogHeader(content, log);
 		content.append("try {\n");
-		content.append("Write-Step 'waiting for Minecraft process ").append(current.pid()).append("'\n");
-		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
+		appendProcessRelease(content, current.pid());
 		content.append("Start-Sleep -Milliseconds 750\n");
 		content.append("Write-Step 'renaming current jar'\n");
 		content.append("Move-Item -LiteralPath ").append(psQuote(currentJar.toString()))
@@ -239,6 +237,22 @@ public final class StartupModUpdater {
 				.append("Add-Content -LiteralPath $logPath -Value ((Get-Date -Format o) + ' ' + $message) ")
 				.append("}\n");
 		content.append("Write-Step 'helper started'\n");
+	}
+
+	private static void appendProcessRelease(StringBuilder content, long pid) {
+		content.append("Write-Step 'waiting for Minecraft process ").append(pid).append("'\n");
+		content.append("$targetProcess = Get-Process -Id ").append(pid).append(" -ErrorAction SilentlyContinue\n");
+		content.append("if ($null -ne $targetProcess) {\n");
+		content.append("\tif (-not $targetProcess.WaitForExit(12000)) {\n");
+		content.append("\t\tWrite-Step 'Minecraft process did not exit in time; forcing stop'\n");
+		content.append("\t\tStop-Process -Id ").append(pid).append(" -Force -ErrorAction SilentlyContinue\n");
+		content.append("\t\tStart-Sleep -Milliseconds 1250\n");
+		content.append("\t} else {\n");
+		content.append("\t\tWrite-Step 'Minecraft process exited cleanly'\n");
+		content.append("\t}\n");
+		content.append("} else {\n");
+		content.append("\tWrite-Step 'Minecraft process already exited'\n");
+		content.append("}\n");
 	}
 
 	private static void appendScriptCatch(StringBuilder content) {
