@@ -4577,3 +4577,30 @@ Verification:
 - Stale `0.1.10` update helper and tmp jar were removed from the active pack before the new test setup.
 - `releases/Imperfect_salvation-0.1.13.jar` SHA-256:
   `50e6596161ed0595768c5245f4b1178996646f297b9f8b91a34575b975b376c3`.
+
+
+## 2026-07-06 - Avoid GitHub raw jar throttling
+
+User report:
+- The `0.1.12` -> `0.1.13` test still did not update.
+
+Observed:
+- Active pack still contained `Imperfect_salvation-0.1.12.jar`.
+- No helper script was created for the latest run.
+- `latest.log` showed:
+  `java.io.IOException: Jar download returned HTTP 429`.
+- Direct check confirmed:
+  - `https://raw.githubusercontent.com/.../Imperfect_salvation-0.1.13.jar` returned `429 Too Many Requests`;
+  - `https://github.com/.../raw/main/releases/Imperfect_salvation-0.1.13.jar` returned `200`.
+
+Implemented:
+- Updated GitHub updater manifest `jar_url` away from the throttled raw host.
+- The manifest now points at:
+  `https://github.com/hh4ck1/Imperfect_Salvation/raw/main/releases/Imperfect_salvation-0.1.13.jar`.
+- Updated the active local updater config to fetch the manifest through:
+  `https://github.com/hh4ck1/Imperfect_Salvation/raw/main/manifest.json`.
+- This remains path-agnostic and does not bake local machine paths into the mod.
+
+Verification:
+- Alternative GitHub raw URL returned HTTP `200`.
+- Active local pack remains on `Imperfect_salvation-0.1.12.jar`, ready to retry the same `0.1.13` update.
