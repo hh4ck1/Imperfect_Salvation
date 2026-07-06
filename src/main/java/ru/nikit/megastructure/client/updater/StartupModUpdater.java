@@ -23,7 +23,6 @@ import java.util.Properties;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModOrigin;
-import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.nikit.megastructure.MegastructureMod;
@@ -37,13 +36,13 @@ public final class StartupModUpdater {
 	private StartupModUpdater() {
 	}
 
-	public static void checkOnClientStartup() {
-		Thread updater = new Thread(StartupModUpdater::checkAndRestartIfNeeded, "Imperfect Salvation updater");
+	public static void checkOnStartup(Runnable shutdown) {
+		Thread updater = new Thread(() -> checkAndRestartIfNeeded(shutdown), "Imperfect Salvation updater");
 		updater.setDaemon(true);
 		updater.start();
 	}
 
-	private static void checkAndRestartIfNeeded() {
+	private static void checkAndRestartIfNeeded(Runnable shutdown) {
 		try {
 			UpdaterConfig config = UpdaterConfig.load();
 			if (!config.enabled() || config.manifestUrl().isBlank()) {
@@ -57,7 +56,9 @@ public final class StartupModUpdater {
 			String currentVersion = mod.getMetadata().getVersion().getFriendlyString();
 			UpdateManifest manifest = fetchManifest(config);
 			if (!isNewerVersion(manifest.version(), currentVersion, config.allowDowngrade())) {
-				renameCurrentJarIfNeeded(currentJar, manifest);
+				if (renameCurrentJarIfNeeded(currentJar, manifest)) {
+					shutdown.run();
+				}
 				return;
 			}
 			Path downloadedJar = downloadJar(config, manifest);
@@ -67,7 +68,7 @@ public final class StartupModUpdater {
 			LOGGER.info("Installed update helper for Imperfect Salvation {} -> {}. Restarting Minecraft.",
 					currentVersion, manifest.version());
 			startHelper(script);
-			MinecraftClient.getInstance().scheduleStop();
+			shutdown.run();
 		} catch (Exception exception) {
 			LOGGER.warn("Silent update check failed", exception);
 		}
@@ -146,16 +147,16 @@ public final class StartupModUpdater {
 		}
 	}
 
-	private static void renameCurrentJarIfNeeded(Path currentJar, UpdateManifest manifest) throws IOException {
+	private static boolean renameCurrentJarIfNeeded(Path currentJar, UpdateManifest manifest) throws IOException {
 		Path destinationJar = targetJarPath(currentJar, manifest);
 		if (currentJar.equals(destinationJar)) {
-			return;
+			return false;
 		}
 		Path script = writeRenameRestartScript(currentJar, destinationJar);
 		LOGGER.info("Installed rename helper for Imperfect Salvation jar {} -> {}. Restarting Minecraft.",
 				currentJar.getFileName(), destinationJar.getFileName());
 		startHelper(script);
-		MinecraftClient.getInstance().scheduleStop();
+		return true;
 	}
 
 	private static Path targetJarPath(Path currentJar, UpdateManifest manifest) {
@@ -174,19 +175,29 @@ public final class StartupModUpdater {
 		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
 		Path script = gameDir.resolve(".imperfect_salvation_updates")
 				.resolve("apply-update-" + current.pid() + ".ps1");
+		Path log = gameDir.resolve(".imperfect_salvation_updates")
+				.resolve("apply-update-" + current.pid() + ".log");
 
 		StringBuilder content = new StringBuilder();
 		content.append("$ErrorActionPreference = 'Stop'\n");
+		appendScriptLogHeader(content, log);
+		content.append("try {\n");
+		content.append("Write-Step 'waiting for Minecraft process ").append(current.pid()).append("'\n");
 		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
 		content.append("Start-Sleep -Milliseconds 750\n");
 		if (!currentJar.equals(destinationJar)) {
+			content.append("Write-Step 'removing old jar'\n");
 			content.append("Remove-Item -LiteralPath ").append(psQuote(currentJar.toString()))
 					.append(" -Force -ErrorAction SilentlyContinue\n");
 		}
+		content.append("Write-Step 'moving downloaded jar into mods folder'\n");
 		content.append("Move-Item -LiteralPath ").append(psQuote(downloadedJar.toString()))
 				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
+		content.append("Write-Step 'starting Minecraft again'\n");
 		UpdaterRelaunchSupport.appendBestRelaunch(content, javaCommand, arguments, commandLine, gameDir);
+		content.append("Write-Step 'update helper completed'\n");
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
+		appendScriptCatch(content);
 		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
 		return script;
 	}
@@ -200,17 +211,43 @@ public final class StartupModUpdater {
 		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
 		Path script = gameDir.resolve(".imperfect_salvation_updates")
 				.resolve("rename-update-" + current.pid() + ".ps1");
+		Path log = gameDir.resolve(".imperfect_salvation_updates")
+				.resolve("rename-update-" + current.pid() + ".log");
 
 		StringBuilder content = new StringBuilder();
 		content.append("$ErrorActionPreference = 'Stop'\n");
+		appendScriptLogHeader(content, log);
+		content.append("try {\n");
+		content.append("Write-Step 'waiting for Minecraft process ").append(current.pid()).append("'\n");
 		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
 		content.append("Start-Sleep -Milliseconds 750\n");
+		content.append("Write-Step 'renaming current jar'\n");
 		content.append("Move-Item -LiteralPath ").append(psQuote(currentJar.toString()))
 				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
+		content.append("Write-Step 'starting Minecraft again'\n");
 		UpdaterRelaunchSupport.appendBestRelaunch(content, javaCommand, arguments, commandLine, gameDir);
+		content.append("Write-Step 'rename helper completed'\n");
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
+		appendScriptCatch(content);
 		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
 		return script;
+	}
+
+	private static void appendScriptLogHeader(StringBuilder content, Path log) {
+		content.append("$logPath = ").append(psQuote(log.toString())).append("\n");
+		content.append("function Write-Step($message) { ")
+				.append("Add-Content -LiteralPath $logPath -Value ((Get-Date -Format o) + ' ' + $message) ")
+				.append("}\n");
+		content.append("Write-Step 'helper started'\n");
+	}
+
+	private static void appendScriptCatch(StringBuilder content) {
+		content.append("}\n");
+		content.append("catch {\n");
+		content.append("\tAdd-Content -LiteralPath $logPath -Value ((Get-Date -Format o) + ' ERROR ' + $_.Exception.Message)\n");
+		content.append("\tAdd-Content -LiteralPath $logPath -Value ($_.ScriptStackTrace | Out-String)\n");
+		content.append("\texit 1\n");
+		content.append("}\n");
 	}
 
 	private static void startHelper(Path script) throws IOException {

@@ -4490,3 +4490,53 @@ Verification:
   `StartupModUpdater self-test passed`.
 - `releases/Imperfect_salvation-0.1.9.jar` SHA-256:
   `c1d5cb40c72641de7637318bb4c1fe40e77774053391445bd122726275c00df4`.
+
+
+## 2026-07-06 - Path-agnostic updater and server-host coverage
+
+User request:
+- The updater must not depend on any prepared local path.
+- The same mod jar should be usable on other players' computers and on the server host.
+
+Observed during test:
+- Local `0.1.8` successfully downloaded `0.1.9` and wrote `apply-update-45848.ps1`.
+- The generated script proved that relaunch fallback was using runtime data, not a hardcoded project path.
+- However `sun.java.command` provided some launcher arguments without quotes, so paths such as:
+  `...\Project Imperfect Salvation`
+  were split into multiple arguments during fallback reconstruction.
+
+Implemented:
+- Bumped project version to `0.1.11`.
+- Kept all production paths dynamic:
+  - current jar path comes from the Fabric mod origin;
+  - game directory comes from `FabricLoader.getGameDir()`;
+  - update temp directory is created under that game directory;
+  - target filename comes from manifest `file_name`;
+  - relaunch executable and JVM arguments come from the current Java process/runtime.
+- Added grouping for unquoted Minecraft launcher path arguments:
+  - `--gameDir`;
+  - `--assetsDir`;
+  - `--version`.
+- Added helper-script log files:
+  - `apply-update-<pid>.log`;
+  - `rename-update-<pid>.log`.
+- These logs are written into the local installation's `.imperfect_salvation_updates` directory and do not use any prepared absolute path.
+- The updater now runs on:
+  - clients through the client entrypoint;
+  - dedicated servers through the common entrypoint when Fabric environment is `SERVER`.
+- Client shutdown uses `MinecraftClient.scheduleStop()`.
+- Dedicated server shutdown uses `System.exit(0)` after the helper script has been started.
+- Active local pack was bootstrapped to `Imperfect_salvation-0.1.10.jar`.
+- GitHub manifest now targets `Imperfect_salvation-0.1.11.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Self-test now covers:
+  - quoted command parsing;
+  - unquoted `--gameDir` / `--assetsDir` path regrouping;
+  - runtime relaunch fallback availability;
+  - PowerShell argument-array generation.
+- `releases/Imperfect_salvation-0.1.11.jar` SHA-256:
+  `7a008b57084744c48a48d2b4985beace11b5bdcbdcef0a34ff1e9e2c580201bd`.

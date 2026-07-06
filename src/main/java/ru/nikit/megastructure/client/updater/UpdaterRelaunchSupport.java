@@ -6,9 +6,11 @@ import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 final class UpdaterRelaunchSupport {
 	private UpdaterRelaunchSupport() {
@@ -69,7 +71,7 @@ final class UpdaterRelaunchSupport {
 			arguments.add("-cp");
 			arguments.add(classPath);
 		}
-		arguments.addAll(splitCommandLine(sunCommand));
+		arguments.addAll(splitJavaCommand(sunCommand));
 		return arguments.isEmpty() ? Optional.empty() : Optional.of(new RelaunchCommand(javaCommand, arguments));
 	}
 
@@ -112,6 +114,36 @@ final class UpdaterRelaunchSupport {
 			arguments.add(current.toString());
 		}
 		return arguments;
+	}
+
+	static List<String> splitJavaCommand(String commandLine) {
+		return normalizeMinecraftCommandArguments(splitCommandLine(commandLine));
+	}
+
+	private static List<String> normalizeMinecraftCommandArguments(List<String> rawArguments) {
+		Set<String> multiTokenOptions = new HashSet<>(List.of("--version", "--gameDir", "--assetsDir"));
+		List<String> normalized = new ArrayList<>(rawArguments.size());
+		for (int i = 0; i < rawArguments.size(); i++) {
+			String argument = rawArguments.get(i);
+			normalized.add(argument);
+			if (!multiTokenOptions.contains(argument) || i + 1 >= rawArguments.size()) {
+				continue;
+			}
+			StringBuilder value = new StringBuilder();
+			int cursor = i + 1;
+			while (cursor < rawArguments.size() && !rawArguments.get(cursor).startsWith("--")) {
+				if (!value.isEmpty()) {
+					value.append(' ');
+				}
+				value.append(rawArguments.get(cursor));
+				cursor++;
+			}
+			if (!value.isEmpty()) {
+				normalized.add(value.toString());
+				i = cursor - 1;
+			}
+		}
+		return normalized;
 	}
 
 	private static String psQuote(String value) {

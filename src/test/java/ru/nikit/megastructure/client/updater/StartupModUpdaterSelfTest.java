@@ -9,6 +9,7 @@ public final class StartupModUpdaterSelfTest {
 
 	public static void main(String[] args) {
 		assertCommandLineSplitKeepsQuotedArguments();
+		assertUnquotedMinecraftPathsAreRegrouped();
 		assertRuntimeFallbackCanBuildRelaunchCommand();
 		assertPowershellRelaunchUsesArgumentArray();
 		System.out.println("StartupModUpdater self-test passed");
@@ -29,6 +30,17 @@ public final class StartupModUpdaterSelfTest {
 				.orElseThrow(() -> new AssertionError("runtime fallback command is not available"));
 		require(!command.javaCommand().isBlank(), "java command is blank");
 		require(!command.arguments().isEmpty(), "runtime fallback arguments are empty");
+	}
+
+	private static void assertUnquotedMinecraftPathsAreRegrouped() {
+		List<String> parsed = UpdaterRelaunchSupport.splitJavaCommand(
+				"net.fabricmc.loader.impl.launch.knot.KnotClient --version Fabric 1.20.1 --gameDir C:\\Users\\nikit\\Desktop\\Project Imperfect Salvation --assetsDir C:\\Users\\nikit\\Desktop\\Project Imperfect Salvation\\assets --width 925"
+		);
+		require(parsed.contains("Fabric 1.20.1"), "unquoted version should be regrouped");
+		require(parsed.contains("C:\\Users\\nikit\\Desktop\\Project Imperfect Salvation"), "unquoted gameDir should be regrouped");
+		require(parsed.contains("C:\\Users\\nikit\\Desktop\\Project Imperfect Salvation\\assets"), "unquoted assetsDir should be regrouped");
+		require(parsed.contains("--width"), "following option should be preserved");
+		require(parsed.contains("925"), "following option value should be preserved");
 	}
 
 	private static void assertPowershellRelaunchUsesArgumentArray() {
