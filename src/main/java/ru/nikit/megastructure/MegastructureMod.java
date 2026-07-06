@@ -50,22 +50,22 @@ public final class MegastructureMod implements ModInitializer {
 		LoadedChunkBlockUpdater.register();
 		Registry.register(Registries.BIOME_SOURCE, id("district"), DistrictBiomeSource.CODEC);
 		Registry.register(Registries.CHUNK_GENERATOR, id("megastructure"), MegastructureChunkGenerator.CODEC);
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
-				net.minecraft.server.command.CommandManager.literal("megastructure")
-						.then(net.minecraft.server.command.CommandManager.literal("start")
-								.executes(context -> ServerStartManager.confirmLaunch(context.getSource())))
-						.then(net.minecraft.server.command.CommandManager.literal("locate_oasis")
-								.requires(source -> source.hasPermissionLevel(2))
-								.executes(context -> locateOasis(context.getSource(), 64))
-								.then(net.minecraft.server.command.CommandManager.argument(
-										"radius",
-										IntegerArgumentType.integer(1, 256)
-								).executes(context -> locateOasis(
-										context.getSource(),
-										IntegerArgumentType.getInteger(context, "radius")
-								)))
-						)
-		));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			dispatcher.register(net.minecraft.server.command.CommandManager.literal("edemstart")
+					.executes(context -> ServerStartManager.confirmLaunch(context.getSource())));
+			dispatcher.register(net.minecraft.server.command.CommandManager.literal("megastructure")
+					.then(net.minecraft.server.command.CommandManager.literal("locate_oasis")
+							.requires(source -> source.hasPermissionLevel(2))
+							.executes(context -> locateOasis(context.getSource(), 64))
+							.then(net.minecraft.server.command.CommandManager.argument(
+									"radius",
+									IntegerArgumentType.integer(1, 256)
+							).executes(context -> locateOasis(
+									context.getSource(),
+									IntegerArgumentType.getInteger(context, "radius")
+							)))
+					));
+		});
 		ServerWorldEvents.LOAD.register((server, world) -> {
 			if (!world.getRegistryKey().equals(World.OVERWORLD) || world.getTime() > 1L) {
 				return;

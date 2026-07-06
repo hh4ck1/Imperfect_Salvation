@@ -4790,3 +4790,28 @@ Verification:
 - Local active pack was intentionally left unchanged for the real update test.
 - `releases/Imperfect_salvation-0.1.21.jar` SHA-256:
   `16e6205c93311df2c89e6dc6e0373962df029106d6ac1df8798995d1462068e9`.
+
+
+## 2026-07-07 - Rename launch command to /edemstart
+
+User request:
+- Replace `/megastructure start` with `/edemstart`.
+- Keep the behavior exactly the same, only change the command name.
+
+Implemented:
+- Registered a top-level `/edemstart` command.
+- `/edemstart` calls the same `ServerStartManager.confirmLaunch(...)` path as the old command.
+- Removed the `/megastructure start` command registration from active source.
+- Kept `/megastructure locate_oasis` and `/megastructure locate_oasis <radius>` unchanged.
+- Bumped project version to `0.1.22`.
+- Updated the GitHub manifest to point at `releases/Imperfect_salvation-0.1.22.jar`.
+- Kept manifest `file_name` as `Imperfect_salvation.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Confirmed active source no longer contains `/megastructure start`.
+- Local active pack was intentionally left unchanged for auto-update testing.
+- `releases/Imperfect_salvation-0.1.22.jar` SHA-256:
+  `4c313c691868233b6ced9b04ff7207ef68a97f6e8f6ee279d72cedf7f21f5c38`.
