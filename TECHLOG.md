@@ -4407,3 +4407,53 @@ Verification:
 - Installed active jar before the test remains size `807885` bytes, timestamp `2026-07-05 23:28:54`.
 - `releases/Imperfect_salvation-0.1.7.jar` SHA-256:
   `581eac6e210355a870e56e023aa68ba41f4ce479467624ae44dd79ab416bae22`.
+
+
+## 2026-07-06 - Updater relaunch fallback repair
+
+User report:
+- The automatic updater downloaded the new jar but did not replace the old jar in the active game folder.
+
+Observed in active modpack:
+- Active mod folder still contained:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`.
+- That jar still reported internal mod version `0.1.6`.
+- The updater cache contained a fully downloaded jar:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\.imperfect_salvation_updates\Imperfect_salvation-0.1.7.jar.tmp`.
+- The downloaded tmp jar SHA-256 matched the GitHub manifest for `0.1.7`.
+- `latest.log` contained:
+  `java.io.IOException: Current Java arguments and command line are not available`.
+
+Root cause:
+- The old updater relied only on `ProcessHandle.Info.arguments()` or `ProcessHandle.Info.commandLine()`
+  to reconstruct the Minecraft relaunch command.
+- On this launcher/runtime combination both values were absent.
+- Because relaunch data was treated as mandatory, the updater failed after download and before writing the apply-update helper script.
+
+Implemented:
+- Bumped project version to `0.1.8`.
+- Added `UpdaterRelaunchSupport`.
+- The updater now keeps the old ProcessHandle paths when available.
+- If ProcessHandle does not expose launch data, the updater reconstructs the relaunch command from:
+  - `ManagementFactory.getRuntimeMXBean().getInputArguments()`;
+  - `java.class.path`;
+  - `sun.java.command`;
+  - `java.home\bin\javaw.exe` on Windows.
+- The PowerShell helper still receives arguments through an explicit `$argsList` array, so paths and player/profile names with spaces remain quoted correctly.
+- The filename-aware update path from `0.1.7` remains active.
+- Updated GitHub updater manifest to point at:
+  `releases/Imperfect_salvation-0.1.8.jar`.
+- Manifest `file_name` is now:
+  `Imperfect_salvation-0.1.8.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `java -cp "build\classes\java\main;build\classes\java\test" ru.nikit.megastructure.client.updater.StartupModUpdaterSelfTest`.
+- Self-test covers:
+  - quoted launch argument parsing;
+  - runtime fallback relaunch command availability;
+  - PowerShell relaunch script argument-array generation.
+- Active game folder was intentionally not manually updated during this release preparation.
+- `releases/Imperfect_salvation-0.1.8.jar` SHA-256:
+  `6807c9d621414c785d123f842c95115644c93a4941d39038ad08ddd1ed2d39bb`.

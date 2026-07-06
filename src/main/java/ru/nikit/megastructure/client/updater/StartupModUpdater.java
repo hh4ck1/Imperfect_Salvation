@@ -167,8 +167,7 @@ public final class StartupModUpdater {
 	private static Path writeUpdateRestartScript(Path currentJar, Path downloadedJar, Path destinationJar) throws IOException {
 		ProcessHandle current = ProcessHandle.current();
 		Info info = current.info();
-		String javaCommand = info.command()
-				.orElseThrow(() -> new IOException("Current Java command is not available"));
+		Optional<String> javaCommand = info.command();
 		Optional<String[]> arguments = info.arguments();
 		Optional<String> commandLine = info.commandLine();
 		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
@@ -185,13 +184,7 @@ public final class StartupModUpdater {
 		}
 		content.append("Move-Item -LiteralPath ").append(psQuote(downloadedJar.toString()))
 				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
-		if (arguments.isPresent()) {
-			appendArgumentListRelaunch(content, javaCommand, arguments.get(), gameDir);
-		} else if (commandLine.isPresent()) {
-			appendCommandLineRelaunch(content, commandLine.get(), gameDir);
-		} else {
-			throw new IOException("Current Java arguments and command line are not available");
-		}
+		UpdaterRelaunchSupport.appendBestRelaunch(content, javaCommand, arguments, commandLine, gameDir);
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
 		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
 		return script;
@@ -200,8 +193,7 @@ public final class StartupModUpdater {
 	private static Path writeRenameRestartScript(Path currentJar, Path destinationJar) throws IOException {
 		ProcessHandle current = ProcessHandle.current();
 		Info info = current.info();
-		String javaCommand = info.command()
-				.orElseThrow(() -> new IOException("Current Java command is not available"));
+		Optional<String> javaCommand = info.command();
 		Optional<String[]> arguments = info.arguments();
 		Optional<String> commandLine = info.commandLine();
 		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
@@ -214,37 +206,10 @@ public final class StartupModUpdater {
 		content.append("Start-Sleep -Milliseconds 750\n");
 		content.append("Move-Item -LiteralPath ").append(psQuote(currentJar.toString()))
 				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
-		if (arguments.isPresent()) {
-			appendArgumentListRelaunch(content, javaCommand, arguments.get(), gameDir);
-		} else if (commandLine.isPresent()) {
-			appendCommandLineRelaunch(content, commandLine.get(), gameDir);
-		} else {
-			throw new IOException("Current Java arguments and command line are not available");
-		}
+		UpdaterRelaunchSupport.appendBestRelaunch(content, javaCommand, arguments, commandLine, gameDir);
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
 		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
 		return script;
-	}
-
-	private static void appendArgumentListRelaunch(
-			StringBuilder content,
-			String javaCommand,
-			String[] arguments,
-			Path gameDir
-	) {
-		content.append("$argsList = @(\n");
-		for (String argument : arguments) {
-			content.append("\t").append(psQuote(argument)).append(",\n");
-		}
-		content.append(")\n");
-		content.append("Start-Process -FilePath ").append(psQuote(javaCommand))
-				.append(" -ArgumentList $argsList -WorkingDirectory ").append(psQuote(gameDir.toString())).append("\n");
-	}
-
-	private static void appendCommandLineRelaunch(StringBuilder content, String commandLine, Path gameDir) {
-		content.append("$commandLine = ").append(psQuote(commandLine)).append("\n");
-		content.append("Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/c', 'start \"\" ' + $commandLine)")
-				.append(" -WorkingDirectory ").append(psQuote(gameDir.toString())).append("\n");
 	}
 
 	private static void startHelper(Path script) throws IOException {
