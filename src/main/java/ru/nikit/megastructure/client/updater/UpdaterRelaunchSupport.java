@@ -23,12 +23,12 @@ final class UpdaterRelaunchSupport {
 			Optional<String> processCommandLine,
 			Path gameDir
 	) throws IOException {
-		if (javaCommand.isPresent() && processArguments.isPresent()) {
-			appendArgumentListRelaunch(content, javaCommand.get(), List.of(processArguments.get()), gameDir);
-			return;
-		}
 		if (processCommandLine.isPresent()) {
 			appendCommandLineRelaunch(content, processCommandLine.get(), gameDir);
+			return;
+		}
+		if (javaCommand.isPresent() && processArguments.isPresent()) {
+			appendArgumentListRelaunch(content, javaCommand.get(), List.of(processArguments.get()), gameDir);
 			return;
 		}
 		RelaunchCommand runtimeCommand = runtimeRelaunchCommand()
@@ -51,14 +51,18 @@ final class UpdaterRelaunchSupport {
 			content.append("\n");
 		}
 		content.append(")\n");
-		content.append("Start-Process -FilePath ").append(psQuote(javaCommand))
-				.append(" -ArgumentList $argsList -WorkingDirectory ").append(psQuote(gameDir.toString())).append("\n");
+		content.append("$startedProcess = Start-Process -FilePath ").append(psQuote(javaCommand))
+				.append(" -ArgumentList $argsList -WorkingDirectory ").append(psQuote(gameDir.toString()))
+				.append(" -PassThru\n");
+		content.append("Write-Step ('relaunch requested with argument array, pid=' + $startedProcess.Id)\n");
 	}
 
 	static void appendCommandLineRelaunch(StringBuilder content, String commandLine, Path gameDir) {
 		content.append("$commandLine = ").append(psQuote(commandLine)).append("\n");
-		content.append("Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/c', 'start \"\" ' + $commandLine)")
-				.append(" -WorkingDirectory ").append(psQuote(gameDir.toString())).append("\n");
+		content.append("$startedProcess = Start-Process -FilePath 'cmd.exe' ")
+				.append("-ArgumentList @('/d', '/s', '/c', 'start \"\" ' + $commandLine)")
+				.append(" -WorkingDirectory ").append(psQuote(gameDir.toString())).append(" -PassThru\n");
+		content.append("Write-Step ('relaunch requested with original command line, pid=' + $startedProcess.Id)\n");
 	}
 
 	static Optional<RelaunchCommand> runtimeRelaunchCommand() {

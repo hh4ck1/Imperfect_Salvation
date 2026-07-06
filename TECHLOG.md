@@ -4671,3 +4671,27 @@ Verification:
 - Old broken `apply-update-46992.ps1` and `Imperfect_salvation-0.1.13.jar.tmp` were removed from the active update cache.
 - `releases/Imperfect_salvation-0.1.15.jar` SHA-256:
   `45578ea3adba36a79e35f93c8500f31ace820e8d23719fa84f2e04f5f1214e95`.
+
+
+## 2026-07-06 - Updater relaunches the same Minecraft launch command
+
+User request:
+- After the silent mod replacement, Minecraft should automatically start the same process again.
+- This must work for other players and server hosts without a hardcoded local Minecraft path.
+
+Implemented:
+- Changed updater relaunch priority in `UpdaterRelaunchSupport`.
+- If the JVM/OS exposes the original process command line, the helper now relaunches from that exact command line first.
+- If the original command line is unavailable, the helper still falls back to the runtime-derived Java executable plus current JVM/Minecraft arguments.
+- The helper now logs which relaunch mode was requested and the spawned helper process id.
+- Added a self-test that prevents the exact command-line path from being overridden by the argument-array fallback.
+- Prepared a real update test chain:
+  - active local pack: `Imperfect_salvation-0.1.16.jar`;
+  - GitHub manifest target: `Imperfect_salvation-0.1.17.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- `releases/Imperfect_salvation-0.1.17.jar` SHA-256:
+  `7883419ef4d957f0187edbabc78749e33a2dc5748241623000f3bae949593a95`.

@@ -2,6 +2,7 @@ package ru.nikit.megastructure.client.updater;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 public final class StartupModUpdaterSelfTest {
 	private StartupModUpdaterSelfTest() {
@@ -12,6 +13,7 @@ public final class StartupModUpdaterSelfTest {
 		assertUnquotedMinecraftPathsAreRegrouped();
 		assertRuntimeFallbackCanBuildRelaunchCommand();
 		assertPowershellRelaunchUsesArgumentArray();
+		assertOriginalCommandLineHasRelaunchPriority();
 		System.out.println("StartupModUpdater self-test passed");
 	}
 
@@ -56,6 +58,26 @@ public final class StartupModUpdaterSelfTest {
 		require(content.contains("'Project Eden'"), "script should quote spaced argument");
 		require(content.contains("-WorkingDirectory 'C:\\Games\\Project Imperfect Salvation'"), "working directory missing");
 		require(!content.contains("'Project Eden',\n)"), "last argument should not have a trailing comma");
+	}
+
+	private static void assertOriginalCommandLineHasRelaunchPriority() {
+		StringBuilder script = new StringBuilder();
+		try {
+			UpdaterRelaunchSupport.appendBestRelaunch(
+					script,
+					Optional.of("C:\\Java\\bin\\javaw.exe"),
+					Optional.of(new String[]{"-cp", "fallback", "FallbackMain"}),
+					Optional.of("\"C:\\Games\\Java Runtime\\bin\\javaw.exe\" -Xmx2G -cp \"real cp\" net.fabricmc.loader.impl.launch.knot.KnotClient --gameDir \"C:\\Games\\Project Imperfect Salvation\""),
+					Path.of("C:\\Games\\Project Imperfect Salvation")
+			);
+		} catch (Exception exception) {
+			throw new AssertionError("appendBestRelaunch should not fail", exception);
+		}
+		String content = script.toString();
+		require(content.contains("$commandLine = "), "exact command line should be used when available");
+		require(content.contains("start \"\" "), "cmd start relaunch should be used for exact command line");
+		require(content.contains("original command line"), "script should log exact command-line relaunch");
+		require(!content.contains("$argsList = @("), "argument array fallback should not override exact command line");
 	}
 
 	private static void require(boolean condition, String message) {
