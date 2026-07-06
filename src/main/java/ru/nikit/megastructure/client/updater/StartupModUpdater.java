@@ -57,11 +57,13 @@ public final class StartupModUpdater {
 			String currentVersion = mod.getMetadata().getVersion().getFriendlyString();
 			UpdateManifest manifest = fetchManifest(config);
 			if (!isNewerVersion(manifest.version(), currentVersion, config.allowDowngrade())) {
+				renameCurrentJarIfNeeded(currentJar, manifest);
 				return;
 			}
 			Path downloadedJar = downloadJar(config, manifest);
 			verifySha256(downloadedJar, manifest.sha256());
-			Path script = writeRestartScript(currentJar, downloadedJar);
+			Path destinationJar = targetJarPath(currentJar, manifest);
+			Path script = writeUpdateRestartScript(currentJar, downloadedJar, destinationJar);
 			LOGGER.info("Installed update helper for Imperfect Salvation {} -> {}. Restarting Minecraft.",
 					currentVersion, manifest.version());
 			startHelper(script);
@@ -100,7 +102,8 @@ public final class StartupModUpdater {
 		return new UpdateManifest(
 				requiredString(json, "version"),
 				requiredString(json, "jar_url"),
-				requiredString(json, "sha256")
+				requiredString(json, "sha256"),
+				optionalString(json, "file_name")
 		);
 	}
 
@@ -142,7 +145,26 @@ public final class StartupModUpdater {
 		}
 	}
 
-	private static Path writeRestartScript(Path currentJar, Path downloadedJar) throws IOException {
+	private static void renameCurrentJarIfNeeded(Path currentJar, UpdateManifest manifest) throws IOException {
+		Path destinationJar = targetJarPath(currentJar, manifest);
+		if (currentJar.equals(destinationJar)) {
+			return;
+		}
+		Path script = writeRenameRestartScript(currentJar, destinationJar);
+		LOGGER.info("Installed rename helper for Imperfect Salvation jar {} -> {}. Restarting Minecraft.",
+				currentJar.getFileName(), destinationJar.getFileName());
+		startHelper(script);
+		MinecraftClient.getInstance().scheduleStop();
+	}
+
+	private static Path targetJarPath(Path currentJar, UpdateManifest manifest) {
+		String targetFileName = manifest.fileName().isBlank()
+				? fileNameFromUrl(manifest.jarUrl(), manifest.version())
+				: manifest.fileName();
+		return currentJar.getParent().resolve(sanitizeFileName(targetFileName)).toAbsolutePath().normalize();
+	}
+
+	private static Path writeUpdateRestartScript(Path currentJar, Path downloadedJar, Path destinationJar) throws IOException {
 		ProcessHandle current = ProcessHandle.current();
 		Info info = current.info();
 		String javaCommand = info.command()
@@ -157,8 +179,41 @@ public final class StartupModUpdater {
 		content.append("$ErrorActionPreference = 'Stop'\n");
 		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
 		content.append("Start-Sleep -Milliseconds 750\n");
+		if (!currentJar.equals(destinationJar)) {
+			content.append("Remove-Item -LiteralPath ").append(psQuote(currentJar.toString()))
+					.append(" -Force -ErrorAction SilentlyContinue\n");
+		}
 		content.append("Move-Item -LiteralPath ").append(psQuote(downloadedJar.toString()))
-				.append(" -Destination ").append(psQuote(currentJar.toString())).append(" -Force\n");
+				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
+		if (arguments.isPresent()) {
+			appendArgumentListRelaunch(content, javaCommand, arguments.get(), gameDir);
+		} else if (commandLine.isPresent()) {
+			appendCommandLineRelaunch(content, commandLine.get(), gameDir);
+		} else {
+			throw new IOException("Current Java arguments and command line are not available");
+		}
+		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
+		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
+		return script;
+	}
+
+	private static Path writeRenameRestartScript(Path currentJar, Path destinationJar) throws IOException {
+		ProcessHandle current = ProcessHandle.current();
+		Info info = current.info();
+		String javaCommand = info.command()
+				.orElseThrow(() -> new IOException("Current Java command is not available"));
+		Optional<String[]> arguments = info.arguments();
+		Optional<String> commandLine = info.commandLine();
+		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
+		Path script = gameDir.resolve(".imperfect_salvation_updates")
+				.resolve("rename-update-" + current.pid() + ".ps1");
+
+		StringBuilder content = new StringBuilder();
+		content.append("$ErrorActionPreference = 'Stop'\n");
+		content.append("Wait-Process -Id ").append(current.pid()).append(" -ErrorAction SilentlyContinue\n");
+		content.append("Start-Sleep -Milliseconds 750\n");
+		content.append("Move-Item -LiteralPath ").append(psQuote(currentJar.toString()))
+				.append(" -Destination ").append(psQuote(destinationJar.toString())).append(" -Force\n");
 		if (arguments.isPresent()) {
 			appendArgumentListRelaunch(content, javaCommand, arguments.get(), gameDir);
 		} else if (commandLine.isPresent()) {
@@ -252,6 +307,31 @@ public final class StartupModUpdater {
 		return json.get(key).getAsString().trim();
 	}
 
+	private static String optionalString(JsonObject json, String key) {
+		if (!json.has(key) || !json.get(key).isJsonPrimitive()) {
+			return "";
+		}
+		return json.get(key).getAsString().trim();
+	}
+
+	private static String fileNameFromUrl(String url, String version) {
+		int slash = url.lastIndexOf('/');
+		String fileName = slash >= 0 ? url.substring(slash + 1) : "";
+		int query = fileName.indexOf('?');
+		if (query >= 0) {
+			fileName = fileName.substring(0, query);
+		}
+		if (fileName.isBlank() || !fileName.endsWith(".jar")) {
+			return "Imperfect_salvation-" + sanitizeFilePart(version) + ".jar";
+		}
+		return fileName;
+	}
+
+	private static String sanitizeFileName(String value) {
+		String sanitized = value.replaceAll("[^A-Za-z0-9._+-]", "_");
+		return sanitized.endsWith(".jar") ? sanitized : sanitized + ".jar";
+	}
+
 	private static String sanitizeFilePart(String value) {
 		return value.replaceAll("[^A-Za-z0-9._-]", "_");
 	}
@@ -288,7 +368,7 @@ public final class StartupModUpdater {
 			String content = """
 					# Imperfect Salvation startup updater.
 					# Set manifest_url to enable silent startup updates.
-					# Manifest JSON fields: version, jar_url, sha256.
+					# Manifest JSON fields: version, jar_url, sha256, optional file_name.
 					enabled=true
 					manifest_url=
 					timeout_seconds=8
@@ -306,6 +386,6 @@ public final class StartupModUpdater {
 		}
 	}
 
-	private record UpdateManifest(String version, String jarUrl, String sha256) {
+	private record UpdateManifest(String version, String jarUrl, String sha256, String fileName) {
 	}
 }

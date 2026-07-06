@@ -4375,3 +4375,35 @@ Verification:
 - Installed jar size: `807885` bytes, timestamp `2026-07-05 23:28:54`.
 - `releases/Imperfect_salvation-0.1.6.jar` SHA-256:
   `c83e63294ba973d1af8f343ff953485e5da2ea99dbf0e5b8f8ddcb414480800a`.
+
+
+## 2026-07-06 - Filename-aware updater test release
+
+User request:
+- Prepare a tiny automatic update test through GitHub.
+- Publish a new build with a different mod jar filename.
+- Do not manually update the active game `mods` folder, so the startup updater can be tested honestly.
+
+Implemented:
+- Bumped project version to `0.1.7`.
+- Updated `StartupModUpdater` to support an optional manifest field:
+  `file_name`.
+- Newer updater builds now install downloaded jars to the manifest target filename instead of always preserving the old jar filename.
+- Added a second-stage self-rename path:
+  if the current mod version already matches the manifest but the local jar filename is stale, the updater writes a helper script, exits Minecraft, renames the current jar to the manifest filename, and restarts Minecraft.
+- This preserves compatibility with the currently installed `0.1.6` updater:
+  first launch updates jar contents, second updater pass renames `Imperfect_salvation-0.1.0.jar` to `Imperfect_salvation-0.1.7.jar`.
+- Updated GitHub updater manifest to point at:
+  `releases/Imperfect_salvation-0.1.7.jar`.
+- Added manifest `file_name`:
+  `Imperfect_salvation-0.1.7.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Built jar metadata reports mod version `0.1.7`.
+- Active game folder was intentionally not updated manually.
+- Active game folder still contains:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation-0.1.0.jar`.
+- Installed active jar before the test remains size `807885` bytes, timestamp `2026-07-05 23:28:54`.
+- `releases/Imperfect_salvation-0.1.7.jar` SHA-256:
+  `581eac6e210355a870e56e023aa68ba41f4ce479467624ae44dd79ab416bae22`.
