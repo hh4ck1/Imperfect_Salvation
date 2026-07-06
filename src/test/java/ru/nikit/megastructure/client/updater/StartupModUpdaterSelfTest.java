@@ -15,6 +15,7 @@ public final class StartupModUpdaterSelfTest {
 		assertPowershellRelaunchUsesArgumentArray();
 		assertOriginalCommandLineHasRelaunchPriority();
 		assertTransientHttpStatusesAreRetried();
+		assertWindowsArgumentLineQuotesSpacedPaths();
 		System.out.println("StartupModUpdater self-test passed");
 	}
 
@@ -55,10 +56,10 @@ public final class StartupModUpdaterSelfTest {
 				Path.of("C:\\Games\\Project Imperfect Salvation")
 		);
 		String content = script.toString();
-		require(content.contains("$argsList = @("), "script should use PowerShell argument array");
-		require(content.contains("'Project Eden'"), "script should quote spaced argument");
+		require(content.contains("$argumentLine = "), "script should use one quoted argument line");
+		require(content.contains("\"Project Eden\""), "script should quote spaced argument");
 		require(content.contains("-WorkingDirectory 'C:\\Games\\Project Imperfect Salvation'"), "working directory missing");
-		require(!content.contains("'Project Eden',\n)"), "last argument should not have a trailing comma");
+		require(!content.contains("$argsList = @("), "PowerShell argument array should not be used");
 	}
 
 	private static void assertOriginalCommandLineHasRelaunchPriority() {
@@ -87,6 +88,24 @@ public final class StartupModUpdaterSelfTest {
 		require(UpdaterHttpSupport.shouldRetryHttp(500), "server error should be retried");
 		require(!UpdaterHttpSupport.shouldRetryHttp(404), "not found should not be retried");
 		require(!UpdaterHttpSupport.shouldRetryHttp(200), "success should not be retried");
+	}
+
+	private static void assertWindowsArgumentLineQuotesSpacedPaths() {
+		String commandLine = UpdaterRelaunchSupport.windowsCommandLine(List.of(
+				"-Xmx2G",
+				"-cp",
+				"C:\\Games\\Project Imperfect Salvation\\libraries\\fabric loader.jar",
+				"net.fabricmc.loader.impl.launch.knot.KnotClient",
+				"--gameDir",
+				"C:\\Games\\Project Imperfect Salvation",
+				"--username",
+				"Project Eden"
+		));
+		require(commandLine.contains("\"C:\\Games\\Project Imperfect Salvation\\libraries\\fabric loader.jar\""),
+				"classpath path with spaces should be quoted");
+		require(commandLine.contains("\"C:\\Games\\Project Imperfect Salvation\""),
+				"gameDir path with spaces should be quoted");
+		require(commandLine.endsWith("\"Project Eden\""), "final spaced argument should be quoted");
 	}
 
 	private static void require(boolean condition, String message) {

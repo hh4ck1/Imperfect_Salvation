@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 final class UpdaterRelaunchSupport {
 	private UpdaterRelaunchSupport() {
@@ -42,19 +43,11 @@ final class UpdaterRelaunchSupport {
 			List<String> arguments,
 			Path gameDir
 	) {
-		content.append("$argsList = @(\n");
-		for (int i = 0; i < arguments.size(); i++) {
-			content.append("\t").append(psQuote(arguments.get(i)));
-			if (i + 1 < arguments.size()) {
-				content.append(",");
-			}
-			content.append("\n");
-		}
-		content.append(")\n");
+		content.append("$argumentLine = ").append(psQuote(windowsCommandLine(arguments))).append("\n");
 		content.append("$startedProcess = Start-Process -FilePath ").append(psQuote(javaCommand))
-				.append(" -ArgumentList $argsList -WorkingDirectory ").append(psQuote(gameDir.toString()))
+				.append(" -ArgumentList $argumentLine -WorkingDirectory ").append(psQuote(gameDir.toString()))
 				.append(" -PassThru\n");
-		content.append("Write-Step ('relaunch requested with argument array, pid=' + $startedProcess.Id)\n");
+		content.append("Write-Step ('relaunch requested with quoted argument line, pid=' + $startedProcess.Id)\n");
 	}
 
 	static void appendCommandLineRelaunch(StringBuilder content, String commandLine, Path gameDir) {
@@ -126,6 +119,45 @@ final class UpdaterRelaunchSupport {
 
 	static List<String> splitJavaCommand(String commandLine) {
 		return normalizeMinecraftCommandArguments(splitCommandLine(commandLine));
+	}
+
+	static String windowsCommandLine(List<String> arguments) {
+		return arguments.stream()
+				.map(UpdaterRelaunchSupport::windowsQuoteArgument)
+				.collect(Collectors.joining(" "));
+	}
+
+	private static String windowsQuoteArgument(String argument) {
+		if (argument.isEmpty()) {
+			return "\"\"";
+		}
+		boolean needsQuotes = argument.chars().anyMatch(character ->
+				Character.isWhitespace(character) || character == '"'
+		);
+		if (!needsQuotes) {
+			return argument;
+		}
+		StringBuilder quoted = new StringBuilder("\"");
+		int backslashes = 0;
+		for (int i = 0; i < argument.length(); i++) {
+			char character = argument.charAt(i);
+			if (character == '\\') {
+				backslashes++;
+				continue;
+			}
+			if (character == '"') {
+				quoted.append("\\".repeat(backslashes * 2 + 1));
+				quoted.append('"');
+				backslashes = 0;
+				continue;
+			}
+			quoted.append("\\".repeat(backslashes));
+			backslashes = 0;
+			quoted.append(character);
+		}
+		quoted.append("\\".repeat(backslashes * 2));
+		quoted.append('"');
+		return quoted.toString();
 	}
 
 	private static List<String> normalizeMinecraftCommandArguments(List<String> rawArguments) {

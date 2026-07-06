@@ -4727,3 +4727,37 @@ Verification:
 - Local active pack remains intentionally on `Imperfect_salvation-0.1.16.jar` for the next real startup update test.
 - `releases/Imperfect_salvation-0.1.18.jar` SHA-256:
   `a009f7a5496eaf420efd880a57ec60b2b163149a792d1cd71cacf08e5e093df7`.
+
+
+## 2026-07-06 - Fix updater relaunch argument quoting
+
+User report:
+- The updater replaced the mod jar, but Minecraft did not visibly start again.
+
+Observed:
+- Active local pack was updated to `Imperfect_salvation-0.1.18.jar`, proving download and jar replacement worked.
+- Helper log `apply-update-58800.log` reached:
+  `relaunch requested with argument array, pid=53160`.
+- No second Minecraft session stayed alive after that.
+- Root cause:
+  the helper used PowerShell `Start-Process -ArgumentList $argsList` with a string array. On Windows this is fragile for Minecraft launch arguments containing spaces, especially `--gameDir C:\Users\...\Project Imperfect Salvation`.
+
+Implemented:
+- Reworked `UpdaterRelaunchSupport.appendArgumentListRelaunch`.
+- It no longer writes a PowerShell argument array.
+- It now builds one Windows-quoted command argument line and passes that to `Start-Process`.
+- Added Windows quoting for:
+  - classpath entries with spaces;
+  - game directory paths with spaces;
+  - usernames or profile names with spaces.
+- Added self-test coverage for the quoted Windows argument line.
+- Prepared a real update test chain:
+  - active local pack: `Imperfect_salvation-0.1.19.jar`;
+  - GitHub manifest target: `Imperfect_salvation-0.1.20.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- `releases/Imperfect_salvation-0.1.20.jar` SHA-256:
+  `8c258b037c0543d8414f033027d499820b818a788ac4e467b263c126462ce587`.
