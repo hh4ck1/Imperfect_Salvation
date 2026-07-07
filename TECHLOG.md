@@ -4870,3 +4870,26 @@ Verification:
   `StartupModUpdater self-test passed`.
 - `releases/Imperfect_salvation-0.1.23.jar` SHA-256:
   `b0180b0188aeb72cbfeee2298f5f776c7b48c4881cf55b8a3984cee607e14c0d`.
+
+
+## 2026-07-07 - Keep moss carpet from being washed away by water
+
+User request:
+- Make moss carpet not break because of water.
+
+Implemented:
+- Added `FlowableFluidMossCarpetMixin`.
+- The mixin injects into `FlowableFluid.canFill(...)`.
+- If the target block is `minecraft:moss_carpet` and the incoming fluid is water or flowing water, the fluid is not allowed to fill/replace that block.
+- This keeps water physics active around the carpet while preventing water spread from deleting moss carpet.
+- Registered the mixin in `megastructure.mixins.json`.
+- Bumped project version to `0.1.24`.
+- Updated the GitHub manifest to point at `releases/Imperfect_salvation-0.1.24.jar`.
+- Kept manifest `file_name` as `Imperfect_salvation.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- `releases/Imperfect_salvation-0.1.24.jar` SHA-256:
+  `908de2b6a5a3044a8cc34b986bac13484752243b386b5a613e2f839f9c48f087`.
