@@ -4815,3 +4815,58 @@ Verification:
 - Local active pack was intentionally left unchanged for auto-update testing.
 - `releases/Imperfect_salvation-0.1.22.jar` SHA-256:
   `4c313c691868233b6ced9b04ff7207ef68a97f6e8f6ee279d72cedf7f21f5c38`.
+
+
+## 2026-07-07 - Server properties for megastructure world preset
+
+User request:
+- Create a `server.properties` file that makes a new server world use the megastructure generator and correct world height.
+
+Implemented:
+- Added `server.properties` to the project root.
+- Copied the same file to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\server.properties`.
+- Set:
+  `level-type=megastructure:megastructure`.
+- Kept `generator-settings={}` because the generator settings are supplied by the registered world preset JSON.
+- Enabled `allow-flight=true` for the large void/tall-structure dimension.
+
+Verified source settings:
+- World preset:
+  `src/main/resources/data/megastructure/worldgen/world_preset/megastructure.json`.
+- Overworld dimension type:
+  `megastructure:megastructure`.
+- Chunk generator:
+  `megastructure:megastructure`.
+- Dimension height settings:
+  `min_y=-384`, `height=1152`, `logical_height=1152`.
+
+Note:
+- Existing worlds keep their old generator in `level.dat`; use a fresh world folder/name if the server already created `world`.
+
+
+## 2026-07-07 - Restore natural block updates after chunk generation
+
+User request:
+- Restore natural behavior for generated blocks.
+- Water should flow, sand and other falling blocks should fall, levers and unsupported blocks should break/drop instead of floating.
+- Apply this generally, not only to the listed examples.
+
+Implemented:
+- Updated `LoadedChunkBlockUpdater`.
+- On loaded megastructure chunks, every non-air block now receives vanilla neighbor-state recomputation through `BlockState.getStateForNeighborUpdate(...)`.
+- If vanilla logic says a block can no longer exist, the updater writes the returned state, including `air`.
+- This restores support-sensitive behavior for blocks such as levers, torches, rails, plants, wall attachments, and similar vanilla/modded blocks that implement neighbor-state rules.
+- Existing fluid tick scheduling remains for all non-empty fluid states.
+- Existing falling-block tick scheduling remains for every `FallingBlock`.
+- Neighbor pulses are emitted for non-full-cube blocks, fluid blocks, and falling blocks so nearby vanilla logic wakes up after generation/load.
+- Bumped project version to `0.1.23`.
+- Updated the GitHub manifest to point at `releases/Imperfect_salvation-0.1.23.jar`.
+- Kept manifest `file_name` as `Imperfect_salvation.jar`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- `releases/Imperfect_salvation-0.1.23.jar` SHA-256:
+  `b0180b0188aeb72cbfeee2298f5f776c7b48c4881cf55b8a3984cee607e14c0d`.

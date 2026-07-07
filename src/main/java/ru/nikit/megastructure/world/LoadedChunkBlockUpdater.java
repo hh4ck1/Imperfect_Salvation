@@ -83,6 +83,10 @@ public final class LoadedChunkBlockUpdater {
 					}
 
 					BlockPos pos = mutable.toImmutable();
+					state = refreshNaturalBlockState(world, pos, state);
+					if (state.isAir()) {
+						continue;
+					}
 					FluidState fluidState = state.getFluidState();
 					if (!fluidState.isEmpty()) {
 						scheduleFluid(world, pos, state, fluidState);
@@ -101,6 +105,43 @@ public final class LoadedChunkBlockUpdater {
 				}
 			}
 		}
+	}
+
+	private static BlockState refreshNaturalBlockState(ServerWorld world, BlockPos pos, BlockState state) {
+		BlockState refreshed = state;
+		for (Direction direction : Direction.values()) {
+			BlockPos neighborPos = pos.offset(direction);
+			if (!world.isChunkLoaded(neighborPos.getX() >> 4, neighborPos.getZ() >> 4)) {
+				continue;
+			}
+			refreshed = refreshed.getStateForNeighborUpdate(
+					direction,
+					world.getBlockState(neighborPos),
+					world,
+					pos,
+					neighborPos
+			);
+			if (refreshed.isAir()) {
+				world.setBlockState(pos, refreshed, Block.NOTIFY_ALL);
+				return refreshed;
+			}
+		}
+
+		if (!refreshed.equals(state)) {
+			world.setBlockState(pos, refreshed, Block.NOTIFY_ALL);
+			return refreshed;
+		}
+		if (shouldPulseNeighbors(world, pos, refreshed)) {
+			world.updateNeighbors(pos, refreshed.getBlock());
+		}
+		return refreshed;
+	}
+
+	private static boolean shouldPulseNeighbors(ServerWorld world, BlockPos pos, BlockState state) {
+		return !state.getFluidState().isEmpty()
+				|| state.getBlock() instanceof FallingBlock
+				|| !state.isFullCube(world, pos)
+				|| !state.isOpaqueFullCube(world, pos);
 	}
 
 	private static void scheduleFluid(ServerWorld world, BlockPos pos, BlockState state, FluidState fluidState) {
