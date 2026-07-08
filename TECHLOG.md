@@ -4893,3 +4893,32 @@ Verification:
   `StartupModUpdater self-test passed`.
 - `releases/Imperfect_salvation-0.1.24.jar` SHA-256:
   `908de2b6a5a3044a8cc34b986bac13484752243b386b5a613e2f839f9c48f087`.
+
+
+## 2026-07-08 - Guard Vulkan bridge on legacy GPUs
+
+User request:
+- Players crash when joining the server.
+- Fix quickly so the server/client pack can finally be launched.
+- Do not remove conflicting mods for now; add a system inside this mod and publish it to GitHub.
+
+Observed from player log:
+- One player has `AMD Radeon HD 5800 Series`.
+- A native Microsoft Visual C++ assertion window reports `result == VK_SUCCESS`, consistent with a Vulkan path being attempted on hardware without usable Vulkan support.
+- `Craftify-1.20.1-1.16.0-fabric.jar` fails with a missing mixin class:
+  `tech.thatgravyboat.craftify.mixin.CustomPayloadMixin`.
+- `swinginglanterns-1.20.1-1.20.6-1.5.0.jar` fails its Sodium mixin against `Sodium 0.5.13+mc1.20.1`.
+
+Implemented:
+- Added an auto-mode guard in `BlackHoleNativeBridge`.
+- The Vulkan bridge now refuses to load on legacy AMD Radeon HD 2xxx-6xxx GPUs, including Radeon HD 5800.
+- Added `-Dmegastructure.vulkan=off` support for manual disable and `-Dmegastructure.vulkan=force` for explicit override.
+- Bumped project version to `0.1.25`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- `releases/Imperfect_salvation-0.1.25.jar` SHA-256:
+  `86eb955835cecf867a6f323fe622b25d7d5c43c3982853b9918d77e5a85af84f`.
+
+Notes:
+- `Craftify` and `swinginglanterns` were diagnosed from the player log but intentionally left in the active pack per user request.
