@@ -4922,3 +4922,27 @@ Verification:
 
 Notes:
 - `Craftify` and `swinginglanterns` were diagnosed from the player log but intentionally left in the active pack per user request.
+
+
+## 2026-07-08 - Fix loose stone knapping click handling
+
+User request:
+- The stone-on-stone knapping menu opens, but clicks do nothing: no hits and no misses.
+- Do not shut down the currently running Minecraft instance.
+
+Root cause:
+- `ClientPlayerInteractionManager.clickButton(...)` first calls `ScreenHandler.onButtonClick(...)` on the client handler.
+- The knapping handler returned `false` on the client because it rejected all client-side calls.
+- Because of that, Minecraft never sent the button-click packet to the server.
+
+Implemented:
+- Updated `LooseStoneKnappingScreenHandler.onButtonClick(...)`.
+- Knapping button IDs are now accepted on the client side only as a local send-permission check.
+- Actual hit/miss mutation still runs only on the server.
+- Bumped project version to `0.1.26`.
+
+Verification:
+- Minecraft process was not stopped.
+- `.\gradlew.bat build` completed successfully.
+- `releases/Imperfect_salvation-0.1.26.jar` SHA-256:
+  `242e6ec910774ba2a790b53047db715c3c520a4b0e1e3e62171a38033d2ecac2`.
