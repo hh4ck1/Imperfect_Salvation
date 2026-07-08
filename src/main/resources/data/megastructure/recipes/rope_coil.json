@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS"
+  ],
+  "key": {
+    "S": { "item": "minecraft:string" }
+  },
+  "result": {
+    "item": "megastructure:rope_coil",
+    "count": 1
+  }
+}

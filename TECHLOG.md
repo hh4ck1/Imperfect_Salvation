@@ -4946,3 +4946,26 @@ Verification:
 - `.\gradlew.bat build` completed successfully.
 - `releases/Imperfect_salvation-0.1.26.jar` SHA-256:
   `242e6ec910774ba2a790b53047db715c3c520a4b0e1e3e62171a38033d2ecac2`.
+
+
+## 2026-07-08 - Bed spawn points and rope coil recipe
+
+User request:
+- Beds currently do not work as respawn points.
+- Sleeping may remain unavailable, but beds should set player spawn by vanilla-style interaction.
+- Change rope coil crafting from four strings to three because the 2x2 string recipe overlaps wool.
+- Do not push to GitHub unless explicitly requested.
+
+Implemented:
+- Added `BedBlockSpawnPointMixin`.
+- On server-side bed use in worlds using `MegastructureChunkGenerator`, the player spawn point is explicitly set to the bed head position.
+- Vanilla bed behavior is not cancelled, so normal messages/sleep checks can still run after the spawn-point update.
+- Changed `data/megastructure/recipes/rope_coil.json` from a 2x2 string pattern to a 3-string row pattern.
+- Bumped local project version to `0.1.27`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- GitHub update was requested after the local-only change.
+- `releases/Imperfect_salvation-0.1.27.jar` SHA-256:
+  `dca05539f87ed0eb6d088e72d85ca5bed06853cd5e85f4cb1f24772e32e54be3`.
+- Running Minecraft was not stopped.
