@@ -4997,6 +4997,37 @@ Verification:
 - GitHub was not updated for this fix.
 
 
+## 2026-07-09 - Client updater default manifest and bed interaction
+
+User request:
+- Beds still cannot be interacted with.
+- Check a player log where the mod does not update.
+
+Observed:
+- The player log loads `megastructure 0.1.26`.
+- There are no `megastructure/updater` lines in that log.
+- The updater was only started when Fabric reported `EnvType.SERVER`, so normal clients never checked GitHub.
+- The updater default config also wrote an empty `manifest_url`, which could silently disable updates on fresh clients.
+- The same log contains unrelated third-party problems: Craftify has a missing mixin class, Voxy/Sodium/gravestones hit `VertexBufferWriter` block-entity bake errors, and Exposure/JEI/Create reports a missing sequenced assembly recipe category.
+
+Implemented:
+- Startup updater now starts from the common initializer on both client and server.
+- Updater config now defaults to `https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/manifest.json`.
+- Existing updater configs with a blank `manifest_url` now fall back to the same default GitHub manifest.
+- Restored a bed interaction mixin for megastructure worlds only.
+- Right-clicking a bed in a megastructure world now sets the spawn point to the bed head and returns success without requiring sleep.
+- The spawn point is stored with `forced=false`, so vanilla respawn validation should still fail if the bed is removed.
+- Bumped local project version to `0.1.32`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Local release jar written to `releases/Imperfect_salvation-0.1.32.jar`.
+- Local release jar SHA-256:
+  `d9ec35788fa28c0a23e9f0a94ef3337ebb0eec7c5366c698d21333d8014a18e6`.
+- Confirmed the release jar contains `BedBlockSpawnPointMixin`, `StartupModUpdater`, `megastructure.mixins.json`, and `fabric.mod.json`.
+- GitHub was not updated for this fix.
+
+
 ## 2026-07-09 - NeepMeat progression loot and EDEN launch permissions
 
 User request:
@@ -5089,3 +5120,58 @@ Verification:
 - Installed jar SHA-256:
   `b3369d9aa2fc6dfd42a3464d48bc8f9fede27eb3408f206418bcacbb8534122b`.
 - GitHub was not updated for this fix.
+
+
+## 2026-07-09 - Moss bonemeal vegetation
+
+User request:
+- Bone meal on moss should still spread moss, but should also make grass and flowers appear on moss like grass blocks do.
+
+Implemented:
+- Added `MossBlockBonemealMixin`.
+- The mixin runs after vanilla `MossBlock.grow`, so normal moss spreading stays intact.
+- After the vanilla spread, the mixin tries 128 nearby surface positions.
+- If the block below is `minecraft:moss_block`, the target position is air, and the selected plant can legally stand there, it places short grass or a small flower.
+- Flower chance is 1/8 per accepted target; otherwise short grass is placed.
+- The flower pool includes dandelion, poppy, blue orchid, allium, azure bluet, tulips, oxeye daisy, cornflower, and lily of the valley.
+- Bumped local project version to `0.1.33`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Local release jar written to `releases/Imperfect_salvation-0.1.33.jar`.
+- Installed local test jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation.jar`.
+- Installed/local release jar SHA-256:
+  `dbcba27f23b151e379c84a6273ee7ae115bb3050c3133436e46caa125496a589`.
+- Confirmed the jar contains `MossBlockBonemealMixin` and `megastructure.mixins.json`.
+- GitHub was not updated for this fix.
+
+
+## 2026-07-09 - Create contraption render crash with Starlight
+
+User request:
+- Players crash when looking at a specific structure, likely around a mechanical rotator.
+- Inspect the logs, fix through the mod if possible, and update GitHub if the mod changes.
+
+Observed from the logs:
+- The crash is client-side while rendering an entity in world.
+- The failing stack is `Create` contraption rendering:
+  `ContraptionEntityRenderer.render -> ClientContraption -> VirtualRenderWorld.runLightEngine`.
+- The immediate exception is inside `Starlight`:
+  `ca.spottedleaf.starlight.common.light.BlockStarLightEngine.initNibble`.
+- This means the structure/rotator itself is not the direct crashing block; looking at an active Create contraption makes Create build a virtual render world, and Starlight crashes during virtual-world light propagation.
+
+Implemented:
+- Added optional client compat mixin config `megastructure.create_compat.mixins.json`.
+- Added `CreateVirtualRenderWorldLightMixin` targeting `com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld`.
+- The mixin is `@Pseudo`, optional, client-only, and uses `remap = false`, so the project still builds without Create in the Gradle classpath.
+- When `starlight` is installed, the mixin cancels `VirtualRenderWorld.runLightEngine()` for Create contraption render worlds.
+- This avoids the Starlight crash path while preserving Create contraption rendering itself; the tradeoff is that moving contraptions may have less precise local lighting.
+- Removed the accidentally restored `BedBlockSpawnPointMixin` from the active mixin list before this release, preserving the previously documented vanilla bed behavior.
+- Bumped project version to `0.1.34`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Release jar written to `releases/Imperfect_salvation-0.1.34.jar`.
+- Release jar SHA-256:
+  `5071ccb073d460622a17bdc48d412aa0e66fb01b0279771f20f3874574eabe36`.

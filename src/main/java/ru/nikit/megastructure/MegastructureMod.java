@@ -1,11 +1,9 @@
 package ru.nikit.megastructure;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -37,9 +35,7 @@ public final class MegastructureMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
-			StartupModUpdater.checkOnStartup(() -> System.exit(0));
-		}
+		StartupModUpdater.checkOnStartup(() -> System.exit(0));
 		GlobalTaskSounds.register();
 		VanillaOreFeatures.register();
 		GlobalTaskManager.register();

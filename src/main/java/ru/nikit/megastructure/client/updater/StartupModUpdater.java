@@ -30,6 +30,7 @@ import ru.nikit.megastructure.MegastructureMod;
 public final class StartupModUpdater {
 	private static final String CONFIG_FILE = "imperfect_salvation_updater.properties";
 	private static final String MANIFEST_URL_PROPERTY = "imperfect_salvation.update_manifest_url";
+	private static final String DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/manifest.json";
 	private static final int DEFAULT_TIMEOUT_SECONDS = 8;
 	private static final int MAX_HTTP_ATTEMPTS = 4;
 	private static final String USER_AGENT = "Imperfect-Salvation-Updater/1.0";
@@ -46,7 +47,7 @@ public final class StartupModUpdater {
 	private static void checkAndRestartIfNeeded(Runnable shutdown) {
 		try {
 			UpdaterConfig config = UpdaterConfig.load();
-			if (!config.enabled() || config.manifestUrl().isBlank()) {
+			if (!config.enabled()) {
 				return;
 			}
 			ModContainer mod = FabricLoader.getInstance()
@@ -435,13 +436,16 @@ public final class StartupModUpdater {
 			Path configPath = FabricLoader.getInstance().getConfigDir().resolve(CONFIG_FILE);
 			if (!Files.exists(configPath)) {
 				writeDefaultConfig(configPath);
-				return new UpdaterConfig(true, false, DEFAULT_TIMEOUT_SECONDS, "");
+				return new UpdaterConfig(true, false, DEFAULT_TIMEOUT_SECONDS, DEFAULT_MANIFEST_URL);
 			}
 			Properties properties = new Properties();
 			try (var reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
 				properties.load(reader);
 			}
-			String manifestUrl = System.getProperty(MANIFEST_URL_PROPERTY, properties.getProperty("manifest_url", "")).trim();
+			String manifestUrl = System.getProperty(MANIFEST_URL_PROPERTY, properties.getProperty("manifest_url", DEFAULT_MANIFEST_URL)).trim();
+			if (manifestUrl.isBlank()) {
+				manifestUrl = DEFAULT_MANIFEST_URL;
+			}
 			boolean enabled = Boolean.parseBoolean(properties.getProperty("enabled", "true"));
 			boolean allowDowngrade = Boolean.parseBoolean(properties.getProperty("allow_downgrade", "false"));
 			int timeoutSeconds = Math.max(2, parseInt(properties.getProperty("timeout_seconds"), DEFAULT_TIMEOUT_SECONDS));
@@ -452,10 +456,10 @@ public final class StartupModUpdater {
 			Files.createDirectories(configPath.getParent());
 			String content = """
 					# Imperfect Salvation startup updater.
-					# Set manifest_url to enable silent startup updates.
+					# Leave manifest_url unchanged to use the official GitHub manifest.
 					# Manifest JSON fields: version, jar_url, sha256, optional file_name.
 					enabled=true
-					manifest_url=
+					manifest_url=https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/manifest.json
 					timeout_seconds=8
 					allow_downgrade=false
 					""";

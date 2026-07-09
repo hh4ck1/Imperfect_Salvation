@@ -18,7 +18,8 @@
     ]
   },
   "mixins": [
-    "megastructure.mixins.json"
+    "megastructure.mixins.json",
+    "megastructure.create_compat.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.15.0",
