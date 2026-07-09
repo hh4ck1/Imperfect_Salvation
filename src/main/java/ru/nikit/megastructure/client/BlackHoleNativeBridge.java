@@ -200,6 +200,9 @@ final class BlackHoleNativeBridge {
 		if (!AVAILABLE || failed) {
 			return false;
 		}
+		if (!VulkanClientConfig.isVulkanEnabled()) {
+			return false;
+		}
 		MinecraftClient client = MinecraftClient.getInstance();
 		Framebuffer framebuffer = client.getFramebuffer();
 		if (framebuffer == null || framebuffer.fbo <= 0) {
@@ -257,6 +260,9 @@ final class BlackHoleNativeBridge {
 			int kind
 	) {
 		if (!AVAILABLE || failed || pixels == null || width <= 0 || height <= 0) {
+			return false;
+		}
+		if (!VulkanClientConfig.isVulkanEnabled()) {
 			return false;
 		}
 		try {
@@ -616,6 +622,10 @@ final class BlackHoleNativeBridge {
 	}
 
 	private static boolean isNativeBridgeAllowed() {
+		if (!VulkanClientConfig.isVulkanEnabled()) {
+			System.err.println("Megastructure Vulkan bridge disabled by Imperfect_salvation client config.");
+			return false;
+		}
 		String mode = System.getProperty("megastructure.vulkan", "auto").trim().toLowerCase(Locale.ROOT);
 		if (mode.equals("off") || mode.equals("false") || mode.equals("0") || mode.equals("disabled")) {
 			System.err.println("Megastructure Vulkan bridge disabled by megastructure.vulkan=" + mode + ".");

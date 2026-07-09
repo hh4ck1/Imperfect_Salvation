@@ -1,0 +1,26 @@
+{
+  "task_appearance": {
+    "replace": true,
+    "sounds": [
+      {
+        "name": "megastructure:task_appearance",
+        "type": "file",
+        "stream": true,
+        "volume": 1.45,
+        "pitch": 1.0
+      }
+    ]
+  },
+  "server_start": {
+    "replace": true,
+    "sounds": [
+      {
+        "name": "megastructure:server_start",
+        "type": "file",
+        "stream": true,
+        "volume": 1.0,
+        "pitch": 1.0
+      }
+    ]
+  }
+}

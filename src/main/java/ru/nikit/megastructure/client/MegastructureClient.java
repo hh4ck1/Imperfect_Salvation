@@ -22,6 +22,7 @@ import ru.nikit.megastructure.traversal.TraversalContent;
 public final class MegastructureClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
+		VulkanClientConfig.loadOnClientStart();
 		StartupModUpdater.checkOnStartup(() -> System.exit(0));
 		BlockRenderLayerMap.INSTANCE.putBlock(TraversalContent.ROPE_BLOCK, RenderLayer.getCutout());
 		BlockRenderLayerMap.INSTANCE.putBlock(TraversalContent.ANCHOR_BLOCK, RenderLayer.getCutout());
@@ -31,6 +32,7 @@ public final class MegastructureClient implements ClientModInitializer {
 				context -> new FlyingItemEntityRenderer<>(context, 1.0F, true)
 		);
 		HandledScreens.register(PrimitiveSurvivalContent.LOOSE_STONE_KNAPPING, LooseStoneKnappingScreen::new);
+		VulkanServerListButton.register();
 		// Register before GameOptions freezes Fabric's keybinding registry.
 		GlobalTaskKeyBindings.register();
 		GlobalTasksClientState.registerNetworking();

@@ -4969,3 +4969,123 @@ Verification:
 - `releases/Imperfect_salvation-0.1.27.jar` SHA-256:
   `dca05539f87ed0eb6d088e72d85ca5bed06853cd5e85f4cb1f24772e32e54be3`.
 - Running Minecraft was not stopped.
+
+
+## 2026-07-08 - Force bed respawn interaction in megastructure worlds
+
+User request:
+- Beds still do not work as respawn points.
+
+Root cause:
+- The previous bed mixin set the spawn point but still allowed vanilla bed logic to continue.
+- In the megastructure dimension, vanilla sleep checks can reject the interaction afterward, making the bed appear broken and leaving respawn validation unreliable.
+
+Implemented:
+- Updated `BedBlockSpawnPointMixin` to take over bed interaction in worlds using `MegastructureChunkGenerator`.
+- A bed click now sets the player's spawn point directly to the bed head, sends the vanilla "Respawn point set" message, and returns success without trying to sleep.
+- The spawn point is marked forced so unusual megastructure geometry cannot invalidate it.
+- Bumped local project version to `0.1.28`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Installed local test jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation.jar`.
+- Installed jar SHA-256:
+  `d0925cbb947eceed8d901293d1128aefa351ddb4ca864fa73868c74e5ad5d32c`.
+- GitHub was not updated for this fix.
+
+
+## 2026-07-09 - NeepMeat progression loot and EDEN launch permissions
+
+User request:
+- Audit NeepMeat progression and make the megastructure survival route more passable.
+- Add craftable Verrucous Stone, Verrucous Stone Port, and glowstone dust conversion from Rusty Metal Light.
+- Add blaze rods, flowers, kelp, rare lava buckets, and cheap NeepMeat progression/support items to structure chests.
+- Make chests spawn on floors in corridors and larger exploration rooms.
+- Improve loose stone scatter coverage on accessible floors.
+- Remove the hardcoded player-name gate from `/edemstart`; OP permission should be enough.
+- Add flowers to chest loot.
+- Make megastructure minecarts roughly 1.5x faster.
+- Update GitHub afterward.
+
+Implemented:
+- Added `verrucous_stone_from_blood`: 2 NeepMeat blood buckets + stone -> Verrucous Stone.
+- Added `verrucous_stone_port_from_blood`: 3 NeepMeat blood buckets + stone -> Verrucous Stone Port.
+- Added `glowstone_dust_from_rusty_metal_light`: Rusty Metal Light -> 3 glowstone dust.
+- Blood buckets preserve empty buckets through NeepMeat's bucket recipe remainder behavior.
+- Reworked corridor chest filling to use deterministic weighted `ItemStack` loot instead of a flat item list.
+- Added a 1% lava bucket roll, rare blaze rods, kelp, flowers, saplings/seeds, survival support items, and low-tier NeepMeat items such as asbestos, asbestos dust/fabric, blood bubbles, blood bubble saplings, fluid pipes, data cables, vascular conduits/sensors, mesh panes, rusty metal sheets, meat scrap, and meat steel balls when those registry IDs exist.
+- Increased chest anchor density while keeping the floor/support checks, and gave larger exploration districts their own cache cadence.
+- Increased loose stone scatter coverage by using smaller cells and a less sparse per-cell chance.
+- `/edemstart` now requires permission level 2 and no longer checks for a specific player nickname or launcher-name system property.
+- Added vanilla flowers to the structure chest support pool so exploration can recover dye/decoration progression.
+- Raised megastructure minecart cruise speed from 0.72 to 1.08, max rail speed from 0.90 to 1.35, and scaled passenger acceleration from 0.028 to 0.042.
+- Bumped project version to `0.1.31`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Release jar written to `releases/Imperfect_salvation-0.1.31.jar`.
+- Release jar SHA-256:
+  `8fa43d7b72c1fd0493fe7fffeae138402581221c6cf747e7ebc6030c7c5bb466`.
+- Confirmed the release jar contains the new recipes and updated generator/loot classes.
+- Dev `runClient --args="--megastructure-updater-self-test"` could not pass in the isolated Loom run because `neepmeat` is now a required mod dependency and is not present in the generated dev run mods folder; the regular build itself is successful.
+- Running Minecraft was not stopped.
+
+
+## 2026-07-09 - Server-list Vulkan disable toggle
+
+User request:
+- Inspect the new player error log.
+- Add a button in the server selection menu that can fully disable Vulkan for problematic players.
+
+Observed from the log:
+- The shown crash is not caused by Imperfect_salvation Vulkan.
+- The failing stack trace is `swinginglanterns.sodium.mixins.json:client.sodium.SodiumLegacyBlockRendererMixin` against Sodium's `BlockRenderer`.
+- The invalid handler signature expects old Sodium arguments and fails after joining a server.
+
+Implemented:
+- Added `VulkanClientConfig`, persisted in `config/imperfect_salvation_client.properties`.
+- Added a `Vulkan: ON/OFF` button to the multiplayer server list screen.
+- The button writes `vulkan_enabled=false` and sets `megastructure.vulkan=off` immediately.
+- `BlackHoleNativeBridge` now checks the persisted client setting before loading and before each render call, so disabling covers terminal Vulkan, visual-field effects, and black-hole native rendering.
+- Added `ScreenAccessor` client mixin to insert the button without touching vanilla screen internals directly.
+- Bumped local project version to `0.1.29`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Installed local test jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation.jar`.
+- Installed jar SHA-256:
+  `b43ec2b9ac28aa74a7a56cb271bd60b434bcba1df5073ce462721f3a384a2687`.
+- GitHub was not updated for this fix.
+
+
+## 2026-07-09 - Vanilla bed respawn, no phantoms, leather recipe
+
+User request:
+- Spawn points must not remain valid without the bed.
+- Beds should use fully vanilla mechanics.
+- Disable phantom spawning.
+- Add a leather recipe from 8 rotten flesh and a water bucket, with the bucket preserved.
+
+Implemented:
+- Removed the custom `BedBlockSpawnPointMixin` from the mixin list and deleted its source.
+- Beds now use vanilla `BedBlock` / `ServerPlayerEntity.trySleep` behavior, so bed respawn validation stays vanilla and missing beds invalidate the spawn point normally.
+- Set the vanilla `doInsomnia` game rule to `false` when server worlds load, disabling phantom insomnia spawning.
+- Added `data/megastructure/recipes/leather_from_rotten_flesh.json`: 8 rotten flesh around a water bucket crafts 1 leather.
+- The water bucket keeps vanilla recipe remainder behavior, so the empty bucket is preserved.
+- Bumped local project version to `0.1.30`.
+
+Verification:
+- `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `StartupModUpdater self-test passed`.
+- Installed local test jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation.jar`.
+- Installed jar SHA-256:
+  `b3369d9aa2fc6dfd42a3464d48bc8f9fede27eb3408f206418bcacbb8534122b`.
+- GitHub was not updated for this fix.

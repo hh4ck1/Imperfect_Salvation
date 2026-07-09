@@ -13,6 +13,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.World;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -52,6 +53,7 @@ public final class MegastructureMod implements ModInitializer {
 		Registry.register(Registries.CHUNK_GENERATOR, id("megastructure"), MegastructureChunkGenerator.CODEC);
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(net.minecraft.server.command.CommandManager.literal("edemstart")
+					.requires(source -> source.hasPermissionLevel(2))
 					.executes(context -> ServerStartManager.confirmLaunch(context.getSource())));
 			dispatcher.register(net.minecraft.server.command.CommandManager.literal("megastructure")
 					.then(net.minecraft.server.command.CommandManager.literal("locate_oasis")
@@ -67,6 +69,7 @@ public final class MegastructureMod implements ModInitializer {
 					));
 		});
 		ServerWorldEvents.LOAD.register((server, world) -> {
+			world.getGameRules().get(GameRules.DO_INSOMNIA).set(false, server);
 			if (!world.getRegistryKey().equals(World.OVERWORLD) || world.getTime() > 1L) {
 				return;
 			}

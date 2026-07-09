@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "B B",
+    " S "
+  ],
+  "key": {
+    "B": {
+      "item": "neepmeat:blood_bucket"
+    },
+    "S": {
+      "item": "minecraft:stone"
+    }
+  },
+  "result": {
+    "item": "neepmeat:verrucous_stone",
+    "count": 1
+  }
+}

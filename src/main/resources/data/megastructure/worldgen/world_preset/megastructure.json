@@ -1,0 +1,67 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "megastructure:megastructure",
+      "generator": {
+        "type": "megastructure:megastructure",
+        "biome_source": {
+          "type": "megastructure:district",
+          "primary_rift": "megastructure:primary_rift",
+          "railway_tunnel": "megastructure:railway_tunnel",
+          "interior_network": "megastructure:interior_network",
+          "dead_end_corridors": "megastructure:dead_end_corridors",
+          "monolith_hall": "megastructure:monolith_hall",
+          "column_forest": "megastructure:column_forest",
+          "cylindrical_atrium": "megastructure:cylindrical_atrium",
+          "abyss_dwelling": "megastructure:abyss_dwelling",
+          "descent_well": "megastructure:descent_well",
+          "titan_tower_hall": "megastructure:titan_tower_hall",
+          "tank_cluster": "megastructure:tank_cluster",
+          "scaffold_chamber": "megastructure:scaffold_chamber",
+          "industrial_wall": "megastructure:industrial_wall",
+          "dense_wall": "megastructure:dense_wall",
+          "additional_districts": {
+            "transit_nexus": "megastructure:transit_nexus",
+            "reactor_cathedral": "megastructure:reactor_cathedral",
+            "hanging_archive": "megastructure:hanging_archive",
+            "ventilation_canyon": "megastructure:ventilation_canyon",
+            "inverted_pyramid": "megastructure:inverted_pyramid",
+            "ring_vault": "megastructure:ring_vault",
+            "machine_nave": "megastructure:machine_nave",
+            "fractured_habitat": "megastructure:fractured_habitat",
+            "conduit_basilica": "megastructure:conduit_basilica",
+            "reservoir_hall": "megastructure:reservoir_hall",
+            "suspended_city": "megastructure:suspended_city",
+            "iris_chasm": "megastructure:iris_chasm",
+            "machine_root_vault": "megastructure:machine_root_vault",
+            "tilted_stacks": "megastructure:tilted_stacks",
+            "silent_foundry": "megastructure:silent_foundry",
+            "newest_districts": {
+              "colossus_lift": "megastructure:colossus_lift",
+              "folded_city": "megastructure:folded_city",
+              "upper_rim_city": "megastructure:upper_rim_city",
+              "orbital_web_core": "megastructure:orbital_web_core",
+              "crown_spire": "megastructure:crown_spire",
+              "globe_monument": "megastructure:globe_monument",
+              "void_altar": "megastructure:void_altar",
+              "atom_storm_array": "megastructure:atom_storm_array",
+              "black_hole_reactor": "megastructure:black_hole_reactor"
+            }
+          }
+        },
+        "settings": {
+          "sea_level": 40,
+          "floor_y": -384,
+          "ceiling_y": 767,
+          "spawn_platform_y": 96,
+          "primary_rift_width": 80,
+          "rift_min_width": 20,
+          "rift_max_width": 100,
+          "cell_size": 96,
+          "motif_cell_size": 768,
+          "ore_rate": 42
+        }
+      }
+    }
+  }
+}

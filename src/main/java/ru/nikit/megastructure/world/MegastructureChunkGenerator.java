@@ -12,7 +12,6 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
@@ -2768,19 +2767,19 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		if (!baseStructureSolidAt(district, x, y - 1, z) || baseStructureSolidAt(district, x, y, z)) {
 			return null;
 		}
-		int cell = 64;
+		int cell = 48;
 		int cellX = MegastructureMath.floorDiv(x, cell);
 		int cellY = MegastructureMath.floorDiv(y - settings.floorY(), 18);
 		int cellZ = MegastructureMath.floorDiv(z, cell);
 		long cellHash = MegastructureMath.hash(worldVariantSeed, cellX, cellZ, 3457 + cellY * 17);
-		if (Math.floorMod(cellHash, 11) != 0) {
+		if (Math.floorMod(cellHash, 7) != 0) {
 			return null;
 		}
-		int siteX = cellX * cell + MegastructureMath.range(cellHash >>> 8, 9, cell - 10);
-		int siteZ = cellZ * cell + MegastructureMath.range(cellHash >>> 20, 9, cell - 10);
+		int siteX = cellX * cell + MegastructureMath.range(cellHash >>> 8, 7, cell - 8);
+		int siteZ = cellZ * cell + MegastructureMath.range(cellHash >>> 20, 7, cell - 8);
 		int dx = x - siteX;
 		int dz = z - siteZ;
-		int reach = Math.floorMod(cellHash >>> 34, 5) == 0 ? 1 : 0;
+		int reach = Math.floorMod(cellHash >>> 34, 3) == 0 ? 1 : 0;
 		return Math.abs(dx) + Math.abs(dz) <= reach
 				? PrimitiveSurvivalContent.LOOSE_STONE_BLOCK.getDefaultState()
 				: null;
@@ -7991,11 +7990,13 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 				|| !isStructureAir(district, x, y + 2, z)) {
 			return null;
 		}
-		int cell = 48;
+		boolean explorationCache = isExplorationCacheDistrict(district);
+		int cell = explorationCache ? 56 : 40;
 		int cellX = MegastructureMath.floorDiv(x, cell);
 		int cellZ = MegastructureMath.floorDiv(z, cell);
-		long hash = MegastructureMath.hash(worldVariantSeed, cellX, cellZ, 2917);
-		if (Math.floorMod(hash, 11) != 0) {
+		long hash = MegastructureMath.hash(worldVariantSeed, cellX, cellZ, explorationCache ? 2927 : 2917);
+		int chance = explorationCache ? 5 : 8;
+		if (Math.floorMod(hash, chance) != 0) {
 			return null;
 		}
 		int anchorX = cellX * cell + MegastructureMath.range(hash >>> 8, 8, cell - 9);
@@ -8012,6 +8013,30 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		return Blocks.CHEST.getDefaultState()
 				.with(ChestBlock.FACING, facing)
 				.with(ChestBlock.WATERLOGGED, false);
+	}
+
+	private boolean isExplorationCacheDistrict(int district) {
+		return district == DISTRICT_MONOLITH_HALL
+				|| district == DISTRICT_COLUMN_FOREST
+				|| district == DISTRICT_CYLINDER
+				|| district == DISTRICT_ABYSS
+				|| district == DISTRICT_DESCENT
+				|| district == DISTRICT_BLOCK_TOWERS
+				|| district == DISTRICT_TANK_CLUSTER
+				|| district == DISTRICT_SCAFFOLD
+				|| district == DISTRICT_TRANSIT_NEXUS
+				|| district == DISTRICT_REACTOR_CATHEDRAL
+				|| district == DISTRICT_HANGING_ARCHIVE
+				|| district == DISTRICT_INVERTED_PYRAMID
+				|| district == DISTRICT_RING_VAULT
+				|| district == DISTRICT_FRACTURED_HABITAT
+				|| district == DISTRICT_SUSPENDED_CITY
+				|| district == DISTRICT_IRIS_CHASM
+				|| district == DISTRICT_FOLDED_CITY
+				|| district == DISTRICT_UPPER_RIM_CITY
+				|| district == DISTRICT_GLOBE_MONUMENT
+				|| district == DISTRICT_VOID_ALTAR
+				|| district == DISTRICT_ATOM_STORM_ARRAY;
 	}
 
 	private boolean isStructureAir(int district, int x, int y, int z) {
@@ -8049,15 +8074,13 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 
 	private void fillCorridorLootChest(ChestBlockEntity chest, int x, int y, int z) {
 		long hash = MegastructureMath.hash(worldVariantSeed, x, z, y ^ 2939);
-		int stacks = MegastructureMath.range(hash, 3, 7);
+		int stacks = MegastructureMath.range(hash, 4, 9);
 		for (int stack = 0; stack < stacks; stack++) {
 			long stackHash = MegastructureMath.hash(hash, stack, 0, 2953);
-			Item item = DynamicWorldgenPalette.corridorLootItem(stackHash);
-			int maxCount = Math.max(1, Math.min(item.getMaxCount(), 12));
-			int count = MegastructureMath.range(stackHash >>> 12, 1, maxCount);
+			ItemStack loot = DynamicWorldgenPalette.corridorLootStack(stackHash);
 			int slot = Math.floorMod((int) (stackHash >>> 24), chest.size());
 			if (chest.getStack(slot).isEmpty()) {
-				chest.setStack(slot, new ItemStack(item, count));
+				chest.setStack(slot, loot);
 			}
 		}
 		chest.markDirty();

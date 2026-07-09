@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "FFF",
+    "FWF",
+    "FFF"
+  ],
+  "key": {
+    "F": { "item": "minecraft:rotten_flesh" },
+    "W": { "item": "minecraft:water_bucket" }
+  },
+  "result": {
+    "item": "minecraft:leather",
+    "count": 1
+  }
+}

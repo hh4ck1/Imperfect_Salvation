@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "megastructure",
+  "version": "${version}",
+  "name": "Imperfect_salvation",
+  "description": "A Fabric world generator and systems mod for Project Imperfect Salvation.",
+  "authors": [
+    "nikit"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ru.nikit.megastructure.MegastructureMod"
+    ],
+    "client": [
+      "ru.nikit.megastructure.client.MegastructureClient"
+    ]
+  },
+  "mixins": [
+    "megastructure.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "neepmeat": "*"
+  }
+}

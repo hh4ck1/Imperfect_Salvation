@@ -1,0 +1,33 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "stone": "minecraft:block/stone",
+    "smooth": "minecraft:block/smooth_stone"
+  },
+  "elements": [
+    {
+      "from": [4, 0, 4],
+      "to": [12, 2, 11],
+      "faces": {
+        "up": { "texture": "#smooth", "uv": [4, 5, 12, 12] },
+        "down": { "texture": "#stone", "uv": [4, 5, 12, 12] },
+        "north": { "texture": "#stone", "uv": [4, 14, 12, 16] },
+        "south": { "texture": "#stone", "uv": [4, 14, 12, 16] },
+        "west": { "texture": "#stone", "uv": [5, 14, 12, 16] },
+        "east": { "texture": "#stone", "uv": [5, 14, 12, 16] }
+      }
+    },
+    {
+      "from": [6, 2, 5],
+      "to": [11, 3, 9],
+      "faces": {
+        "up": { "texture": "#smooth", "uv": [6, 7, 11, 11] },
+        "down": { "texture": "#stone", "uv": [6, 7, 11, 11] },
+        "north": { "texture": "#stone", "uv": [6, 13, 11, 14] },
+        "south": { "texture": "#stone", "uv": [6, 13, 11, 14] },
+        "west": { "texture": "#stone", "uv": [7, 13, 11, 14] },
+        "east": { "texture": "#stone", "uv": [7, 13, 11, 14] }
+      }
+    }
+  ]
+}

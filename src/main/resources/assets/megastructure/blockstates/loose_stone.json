@@ -1,0 +1,9 @@
+{
+  "variants": {
+    "phase=0": { "model": "megastructure:block/loose_stone" },
+    "phase=1": { "model": "megastructure:block/loose_stone" },
+    "phase=2": { "model": "megastructure:block/loose_stone" },
+    "phase=3": { "model": "megastructure:block/loose_stone" },
+    "phase=4": { "model": "megastructure:block/loose_stone" }
+  }
+}

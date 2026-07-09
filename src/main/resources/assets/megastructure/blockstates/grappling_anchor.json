@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=north": { "model": "megastructure:block/grappling_anchor" },
+    "facing=east": { "model": "megastructure:block/grappling_anchor", "y": 90 },
+    "facing=south": { "model": "megastructure:block/grappling_anchor", "y": 180 },
+    "facing=west": { "model": "megastructure:block/grappling_anchor", "y": 270 },
+    "facing=up": { "model": "megastructure:block/grappling_anchor" },
+    "facing=down": { "model": "megastructure:block/grappling_anchor" }
+  }
+}

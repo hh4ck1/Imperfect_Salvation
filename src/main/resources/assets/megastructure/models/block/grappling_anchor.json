@@ -1,0 +1,68 @@
+{
+  "textures": {
+    "metal": "minecraft:block/raw_iron_block",
+    "rope": "minecraft:block/brown_wool"
+  },
+  "elements": [
+    {
+      "from": [3, 3, 0],
+      "to": [13, 13, 3],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [1, 6, 3],
+      "to": [15, 10, 8],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [6, 1, 3],
+      "to": [10, 15, 8],
+      "faces": {
+        "north": { "texture": "#metal" },
+        "east": { "texture": "#metal" },
+        "south": { "texture": "#metal" },
+        "west": { "texture": "#metal" },
+        "up": { "texture": "#metal" },
+        "down": { "texture": "#metal" }
+      }
+    },
+    {
+      "from": [7, 0, 7],
+      "to": [9, 16, 9],
+      "faces": {
+        "north": { "texture": "#rope" },
+        "east": { "texture": "#rope" },
+        "south": { "texture": "#rope" },
+        "west": { "texture": "#rope" },
+        "up": { "texture": "#rope" },
+        "down": { "texture": "#rope" }
+      }
+    },
+    {
+      "from": [7, 7, 0],
+      "to": [9, 9, 8],
+      "faces": {
+        "north": { "texture": "#rope" },
+        "east": { "texture": "#rope" },
+        "south": { "texture": "#rope" },
+        "west": { "texture": "#rope" },
+        "up": { "texture": "#rope" },
+        "down": { "texture": "#rope" }
+      }
+    }
+  ]
+}

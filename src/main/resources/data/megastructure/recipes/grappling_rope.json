@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "II ",
+    " C ",
+    "   "
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "C": { "item": "megastructure:rope_coil" }
+  },
+  "result": {
+    "item": "megastructure:grappling_rope",
+    "count": 1
+  }
+}
