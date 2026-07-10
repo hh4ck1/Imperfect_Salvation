@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
@@ -84,6 +85,10 @@ public final class LoadedChunkBlockUpdater {
 					}
 
 					BlockPos pos = mutable.toImmutable();
+					if (isVanillaPortalBlock(state)) {
+						world.setBlockState(pos, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
+						continue;
+					}
 					state = refreshNaturalBlockState(world, pos, state);
 					if (state.isAir()) {
 						continue;
@@ -272,6 +277,10 @@ public final class LoadedChunkBlockUpdater {
 
 	private static boolean isVascularConduit(BlockState state) {
 		return isNeepMeatBlock(state, VASCULAR_CONDUIT) || isNeepMeatBlock(state, ENCASED_VASCULAR_CONDUIT);
+	}
+
+	private static boolean isVanillaPortalBlock(BlockState state) {
+		return state.isOf(Blocks.END_PORTAL) || state.isOf(Blocks.END_PORTAL_FRAME);
 	}
 
 	private static boolean isNeepMeatBlock(BlockState state, String path) {

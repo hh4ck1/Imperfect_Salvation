@@ -31,6 +31,24 @@ current_active_state:
 - active_story_systems: server start gate, narrative audio queue, global tasks screen/progression
 - active_worldgen_passes: vanilla ore features plus runtime modded wall ore veins; enriched oasis trees; upgraded rift bridges and wall-entry corridors
 
+## 2026-07-11 - Codex portal removal and stronghold generation ban
+
+Request scope:
+- Remove portal blocks.
+- Forbid stronghold spawning.
+- Publish the updated mod to GitHub.
+
+Implemented:
+- Deleted the custom `verrucous_stone_port_from_blood` recipe, so this mod no longer grants the NeepMeat Verrucous Stone Port block.
+- Added a chunk-load sanitizer for megastructure worlds that removes vanilla `minecraft:end_portal` and `minecraft:end_portal_frame` blocks from already-loaded/generated chunks.
+- Overrode `MegastructureChunkGenerator.setStructureStarts(...)` and `addStructureReferences(...)` as no-ops, preventing vanilla structures, including strongholds, from starting or adding references inside the megastructure generator.
+- Bumped local mod version to `0.1.42`.
+- Updated `manifest.json` to `0.1.42`.
+
+Validation:
+- `.\gradlew.bat build` => SUCCESS.
+- Release jar SHA-256: `38224c7647561a23b61023bc9c7c95ca2a4eccc77dd2bf613c630779c3ea28aa`.
+
 ## 2026-07-10 - Codex vanilla monster spawning rate and ceiling flag
 
 Request scope:

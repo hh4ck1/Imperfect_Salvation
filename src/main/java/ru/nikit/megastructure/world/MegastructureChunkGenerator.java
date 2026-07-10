@@ -13,7 +13,9 @@ import net.minecraft.block.ChestBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.state.property.Properties;
+import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
@@ -30,6 +32,7 @@ import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.chunk.Blender;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
+import net.minecraft.world.gen.chunk.placement.StructurePlacementCalculator;
 import net.minecraft.world.gen.noise.NoiseConfig;
 import ru.nikit.megastructure.survival.PrimitiveSurvivalContent;
 
@@ -253,6 +256,22 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		super.generateFeatures(world, chunk, structureAccessor);
 		populateCorridorLootChests(world, chunk);
 		populateRoomLootChests(world, chunk);
+	}
+
+	@Override
+	public void setStructureStarts(
+			DynamicRegistryManager registryManager,
+			StructurePlacementCalculator placementCalculator,
+			StructureAccessor structureAccessor,
+			Chunk chunk,
+			StructureTemplateManager structureTemplateManager
+	) {
+		// The megastructure dimension owns all playable architecture. Vanilla strongholds must not
+		// punch portal rooms through it, even when the server has normal structure generation enabled.
+	}
+
+	@Override
+	public void addStructureReferences(StructureWorldAccess world, StructureAccessor structureAccessor, Chunk chunk) {
 	}
 
 	@Override
