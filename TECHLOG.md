@@ -31,6 +31,23 @@ current_active_state:
 - active_story_systems: server start gate, narrative audio queue, global tasks screen/progression
 - active_worldgen_passes: vanilla ore features plus runtime modded wall ore veins; enriched oasis trees; upgraded rift bridges and wall-entry corridors
 
+## 2026-07-11 - Codex hostile mob cap
+
+Request scope:
+- Add a mob limit of 50.
+
+Implemented:
+- Added a 50 living-hostile-mob cap to `SpawnHelperMixin` for worlds using `MegastructureChunkGenerator`.
+- The cap counts loaded living entities whose entity type belongs to `SpawnGroup.MONSTER`.
+- When the cap is reached, new vanilla natural monster spawn attempts are cancelled.
+- Existing vanilla spawn rules, the 25% spawn-rate reduction, drops, despawn behavior, and non-monster groups are unchanged.
+- Bumped local mod version to `0.1.43`.
+- Updated `manifest.json` to `0.1.43`.
+
+Validation:
+- `.\gradlew.bat build` => SUCCESS.
+- Release jar SHA-256: `554d26950fcc3b2045c6e80d19d0ab38d9020d64e79a49aa35c1752591ddb484`.
+
 ## 2026-07-11 - Codex portal removal and stronghold generation ban
 
 Request scope:
