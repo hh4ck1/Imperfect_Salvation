@@ -11,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -20,6 +21,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModOrigin;
@@ -34,11 +37,16 @@ public final class StartupModUpdater {
 	private static final int DEFAULT_TIMEOUT_SECONDS = 8;
 	private static final int MAX_HTTP_ATTEMPTS = 4;
 	private static final String USER_AGENT = "Imperfect-Salvation-Updater/1.0";
+	private static final AtomicBoolean CHECK_STARTED = new AtomicBoolean();
 
 	private StartupModUpdater() {
 	}
 
 	public static void checkOnStartup(Runnable shutdown) {
+		if (!CHECK_STARTED.compareAndSet(false, true)) {
+			logger().debug("Imperfect Salvation updater was already started for this process.");
+			return;
+		}
 		Thread updater = new Thread(() -> checkAndRestartIfNeeded(shutdown), "Imperfect Salvation updater");
 		updater.setDaemon(true);
 		updater.start();
@@ -48,6 +56,7 @@ public final class StartupModUpdater {
 		try {
 			UpdaterConfig config = UpdaterConfig.load();
 			if (!config.enabled()) {
+				logger().info("Imperfect Salvation updater is disabled by config.");
 				return;
 			}
 			ModContainer mod = FabricLoader.getInstance()
@@ -58,6 +67,8 @@ public final class StartupModUpdater {
 			String currentVersion = mod.getMetadata().getVersion().getFriendlyString();
 			UpdateManifest manifest = fetchManifest(config);
 			if (!isNewerVersion(manifest.version(), currentVersion, config.allowDowngrade())) {
+				logger().info("No Imperfect Salvation update needed: local={}, manifest={}, target_file={}.",
+						currentVersion, manifest.version(), targetJarPath(currentJar, manifest).getFileName());
 				if (renameCurrentJarIfNeeded(currentJar, manifest)) {
 					shutdown.run();
 				}
@@ -242,16 +253,53 @@ public final class StartupModUpdater {
 		Optional<String[]> arguments = info.arguments();
 		Optional<String> commandLine = info.commandLine();
 		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
-		Path script = gameDir.resolve(".imperfect_salvation_updates")
-				.resolve("apply-update-" + current.pid() + ".ps1");
+		Path script = updateScriptPath(gameDir, "apply-update", current.pid());
 		Path log = gameDir.resolve(".imperfect_salvation_updates")
 				.resolve("apply-update-" + current.pid() + ".log");
 
+		String content = isWindows()
+				? windowsUpdateScript(current.pid(), log, currentJar, downloadedJar, destinationJar, javaCommand, arguments, commandLine, gameDir)
+				: unixUpdateScript(current.pid(), log, currentJar, downloadedJar, destinationJar, javaCommand, arguments, commandLine, gameDir);
+		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
+		makeExecutableIfNeeded(script);
+		return script;
+	}
+
+	private static Path writeRenameRestartScript(Path currentJar, Path destinationJar) throws IOException {
+		ProcessHandle current = ProcessHandle.current();
+		Info info = current.info();
+		Optional<String> javaCommand = info.command();
+		Optional<String[]> arguments = info.arguments();
+		Optional<String> commandLine = info.commandLine();
+		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
+		Path script = updateScriptPath(gameDir, "rename-update", current.pid());
+		Path log = gameDir.resolve(".imperfect_salvation_updates")
+				.resolve("rename-update-" + current.pid() + ".log");
+
+		String content = isWindows()
+				? windowsRenameScript(current.pid(), log, currentJar, destinationJar, javaCommand, arguments, commandLine, gameDir)
+				: unixRenameScript(current.pid(), log, currentJar, destinationJar, javaCommand, arguments, commandLine, gameDir);
+		Files.writeString(script, content, StandardCharsets.UTF_8);
+		makeExecutableIfNeeded(script);
+		return script;
+	}
+
+	private static String windowsUpdateScript(
+			long pid,
+			Path log,
+			Path currentJar,
+			Path downloadedJar,
+			Path destinationJar,
+			Optional<String> javaCommand,
+			Optional<String[]> arguments,
+			Optional<String> commandLine,
+			Path gameDir
+	) throws IOException {
 		StringBuilder content = new StringBuilder();
 		content.append("$ErrorActionPreference = 'Stop'\n");
 		appendScriptLogHeader(content, log);
 		content.append("try {\n");
-		appendProcessRelease(content, current.pid());
+		appendProcessRelease(content, pid);
 		content.append("Start-Sleep -Milliseconds 750\n");
 		if (!currentJar.equals(destinationJar)) {
 			content.append("Write-Step 'removing old jar'\n");
@@ -266,27 +314,24 @@ public final class StartupModUpdater {
 		content.append("Write-Step 'update helper completed'\n");
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
 		appendScriptCatch(content);
-		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
-		return script;
+		return content.toString();
 	}
 
-	private static Path writeRenameRestartScript(Path currentJar, Path destinationJar) throws IOException {
-		ProcessHandle current = ProcessHandle.current();
-		Info info = current.info();
-		Optional<String> javaCommand = info.command();
-		Optional<String[]> arguments = info.arguments();
-		Optional<String> commandLine = info.commandLine();
-		Path gameDir = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
-		Path script = gameDir.resolve(".imperfect_salvation_updates")
-				.resolve("rename-update-" + current.pid() + ".ps1");
-		Path log = gameDir.resolve(".imperfect_salvation_updates")
-				.resolve("rename-update-" + current.pid() + ".log");
-
+	private static String windowsRenameScript(
+			long pid,
+			Path log,
+			Path currentJar,
+			Path destinationJar,
+			Optional<String> javaCommand,
+			Optional<String[]> arguments,
+			Optional<String> commandLine,
+			Path gameDir
+	) throws IOException {
 		StringBuilder content = new StringBuilder();
 		content.append("$ErrorActionPreference = 'Stop'\n");
 		appendScriptLogHeader(content, log);
 		content.append("try {\n");
-		appendProcessRelease(content, current.pid());
+		appendProcessRelease(content, pid);
 		content.append("Start-Sleep -Milliseconds 750\n");
 		content.append("Write-Step 'renaming current jar'\n");
 		content.append("Move-Item -LiteralPath ").append(psQuote(currentJar.toString()))
@@ -296,8 +341,110 @@ public final class StartupModUpdater {
 		content.append("Write-Step 'rename helper completed'\n");
 		content.append("Remove-Item -LiteralPath $MyInvocation.MyCommand.Path -Force\n");
 		appendScriptCatch(content);
-		Files.writeString(script, content.toString(), StandardCharsets.UTF_8);
-		return script;
+		return content.toString();
+	}
+
+	private static String unixUpdateScript(
+			long pid,
+			Path log,
+			Path currentJar,
+			Path downloadedJar,
+			Path destinationJar,
+			Optional<String> javaCommand,
+			Optional<String[]> arguments,
+			Optional<String> commandLine,
+			Path gameDir
+	) throws IOException {
+		StringBuilder content = new StringBuilder();
+		appendUnixScriptHeader(content, log);
+		appendUnixProcessRelease(content, pid);
+		content.append("sleep 0.75\n");
+		if (!currentJar.equals(destinationJar)) {
+			content.append("Write-Step \"removing old jar\"\n");
+			content.append("rm -f -- ").append(shQuote(currentJar.toString())).append("\n");
+		}
+		content.append("Write-Step \"moving downloaded jar into mods folder\"\n");
+		content.append("mv -f -- ").append(shQuote(downloadedJar.toString()))
+				.append(' ').append(shQuote(destinationJar.toString())).append("\n");
+		content.append("Write-Step \"starting Minecraft again\"\n");
+		UpdaterRelaunchSupport.appendBestUnixRelaunch(content, javaCommand, arguments, commandLine, gameDir);
+		content.append("Write-Step \"update helper completed\"\n");
+		content.append("rm -f -- \"$0\"\n");
+		return content.toString();
+	}
+
+	private static String unixRenameScript(
+			long pid,
+			Path log,
+			Path currentJar,
+			Path destinationJar,
+			Optional<String> javaCommand,
+			Optional<String[]> arguments,
+			Optional<String> commandLine,
+			Path gameDir
+	) throws IOException {
+		StringBuilder content = new StringBuilder();
+		appendUnixScriptHeader(content, log);
+		appendUnixProcessRelease(content, pid);
+		content.append("sleep 0.75\n");
+		content.append("Write-Step \"renaming current jar\"\n");
+		content.append("mv -f -- ").append(shQuote(currentJar.toString()))
+				.append(' ').append(shQuote(destinationJar.toString())).append("\n");
+		content.append("Write-Step \"starting Minecraft again\"\n");
+		UpdaterRelaunchSupport.appendBestUnixRelaunch(content, javaCommand, arguments, commandLine, gameDir);
+		content.append("Write-Step \"rename helper completed\"\n");
+		content.append("rm -f -- \"$0\"\n");
+		return content.toString();
+	}
+
+	private static Path updateScriptPath(Path gameDir, String prefix, long pid) throws IOException {
+		Path updateDir = gameDir.resolve(".imperfect_salvation_updates");
+		Files.createDirectories(updateDir);
+		return updateDir.resolve(prefix + "-" + pid + (isWindows() ? ".ps1" : ".sh"));
+	}
+
+	private static void makeExecutableIfNeeded(Path script) {
+		if (isWindows()) {
+			return;
+		}
+		try {
+			Files.setPosixFilePermissions(script, Set.of(
+					PosixFilePermission.OWNER_READ,
+					PosixFilePermission.OWNER_WRITE,
+					PosixFilePermission.OWNER_EXECUTE
+			));
+		} catch (UnsupportedOperationException | IOException ignored) {
+			// The helper is still launched through /bin/sh, so executable bits are only best-effort.
+		}
+	}
+
+	private static boolean isWindows() {
+		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+	}
+
+	private static void appendUnixScriptHeader(StringBuilder content, Path log) {
+		content.append("#!/bin/sh\n");
+		content.append("set -eu\n");
+		content.append("logPath=").append(shQuote(log.toString())).append("\n");
+		content.append("Write-Step() { printf '%s %s\\n' \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\" \"$1\" >> \"$logPath\"; }\n");
+		content.append("Write-Step \"helper started\"\n");
+	}
+
+	private static void appendUnixProcessRelease(StringBuilder content, long pid) {
+		content.append("Write-Step \"waiting for Minecraft process ").append(pid).append("\"\n");
+		content.append("waited=0\n");
+		content.append("while kill -0 ").append(pid).append(" 2>/dev/null && [ \"$waited\" -lt 120 ]; do\n");
+		content.append("\tsleep 0.1\n");
+		content.append("\twaited=$((waited + 1))\n");
+		content.append("done\n");
+		content.append("if kill -0 ").append(pid).append(" 2>/dev/null; then\n");
+		content.append("\tWrite-Step \"Minecraft process did not exit in time; forcing stop\"\n");
+		content.append("\tkill -TERM ").append(pid).append(" 2>/dev/null || true\n");
+		content.append("\tsleep 1.25\n");
+		content.append("\tkill -KILL ").append(pid).append(" 2>/dev/null || true\n");
+		content.append("else\n");
+		content.append("\tWrite-Step \"Minecraft process exited cleanly\"\n");
+		content.append("fi\n");
 	}
 
 	private static void appendScriptLogHeader(StringBuilder content, Path log) {
@@ -334,16 +481,20 @@ public final class StartupModUpdater {
 	}
 
 	private static void startHelper(Path script) throws IOException {
-		new ProcessBuilder(
-				"powershell.exe",
-				"-WindowStyle",
-				"Hidden",
-				"-NoProfile",
-				"-ExecutionPolicy",
-				"Bypass",
-				"-File",
-				script.toString()
-		).start();
+		if (isWindows()) {
+			new ProcessBuilder(
+					"powershell.exe",
+					"-WindowStyle",
+					"Hidden",
+					"-NoProfile",
+					"-ExecutionPolicy",
+					"Bypass",
+					"-File",
+					script.toString()
+			).start();
+			return;
+		}
+		new ProcessBuilder("/bin/sh", script.toString()).start();
 	}
 
 	private static boolean isNewerVersion(String candidate, String current, boolean allowDowngrade) {
@@ -424,6 +575,10 @@ public final class StartupModUpdater {
 
 	private static String psQuote(String value) {
 		return "'" + value.replace("'", "''") + "'";
+	}
+
+	private static String shQuote(String value) {
+		return "'" + value.replace("'", "'\"'\"'") + "'";
 	}
 
 	private record UpdaterConfig(

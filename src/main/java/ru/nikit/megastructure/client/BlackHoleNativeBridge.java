@@ -1,11 +1,15 @@
 package ru.nikit.megastructure.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
@@ -608,6 +612,10 @@ final class BlackHoleNativeBridge {
 		if (explicit != null && !explicit.isBlank()) {
 			return loadPath(Path.of(explicit));
 		}
+		Path packaged = extractPackagedNativeLibrary();
+		if (packaged != null && loadPath(packaged)) {
+			return true;
+		}
 		Path local = Path.of("natives", mappedLibraryName());
 		if (Files.isRegularFile(local) && loadPath(local)) {
 			return true;
@@ -619,6 +627,81 @@ final class BlackHoleNativeBridge {
 		} catch (UnsatisfiedLinkError ignored) {
 			return false;
 		}
+	}
+
+	private static Path extractPackagedNativeLibrary() {
+		String resourcePath = packagedNativeResourcePath();
+		if (resourcePath.isBlank()) {
+			return null;
+		}
+		try (InputStream input = BlackHoleNativeBridge.class.getResourceAsStream(resourcePath)) {
+			if (input == null) {
+				return null;
+			}
+			String version = FabricLoader.getInstance()
+					.getModContainer("megastructure")
+					.map(container -> container.getMetadata().getVersion().getFriendlyString())
+					.orElse("dev");
+			Path target = FabricLoader.getInstance()
+					.getGameDir()
+					.resolve(".imperfect_salvation_natives")
+					.resolve(sanitizePathPart(version))
+					.resolve(platformKey())
+					.resolve(mappedLibraryName())
+					.toAbsolutePath()
+					.normalize();
+			Files.createDirectories(target.getParent());
+			Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+			Files.copy(input, temp, StandardCopyOption.REPLACE_EXISTING);
+			try {
+				Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			} catch (IOException ignored) {
+				try {
+					Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+				} catch (IOException moveError) {
+					Files.deleteIfExists(temp);
+					if (Files.isRegularFile(target)) {
+						return target;
+					}
+					throw moveError;
+				}
+			}
+			return target;
+		} catch (IOException error) {
+			System.err.println("Megastructure black-hole packaged native extraction failed: " + error.getMessage());
+			return null;
+		}
+	}
+
+	private static String packagedNativeResourcePath() {
+		String platform = platformKey();
+		if (platform.isBlank()) {
+			return "";
+		}
+		return "/native/" + platform + "/" + mappedLibraryName();
+	}
+
+	private static String platformKey() {
+		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+		String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+		boolean x64 = arch.equals("amd64") || arch.equals("x86_64");
+		if (os.contains("win") && x64) {
+			return "windows-x64";
+		}
+		if ((os.contains("linux") || os.contains("unix")) && x64) {
+			return "linux-x64";
+		}
+		if (os.contains("mac") && x64) {
+			return "macos-x64";
+		}
+		if (os.contains("mac") && (arch.equals("aarch64") || arch.equals("arm64"))) {
+			return "macos-arm64";
+		}
+		return "";
+	}
+
+	private static String sanitizePathPart(String value) {
+		return value.replaceAll("[^A-Za-z0-9._-]", "_");
 	}
 
 	private static boolean isNativeBridgeAllowed() {

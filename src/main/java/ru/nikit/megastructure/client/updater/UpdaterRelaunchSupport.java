@@ -37,6 +37,26 @@ final class UpdaterRelaunchSupport {
 		appendArgumentListRelaunch(content, runtimeCommand.javaCommand(), runtimeCommand.arguments(), gameDir);
 	}
 
+	static void appendBestUnixRelaunch(
+			StringBuilder content,
+			Optional<String> javaCommand,
+			Optional<String[]> processArguments,
+			Optional<String> processCommandLine,
+			Path gameDir
+	) throws IOException {
+		if (processCommandLine.isPresent()) {
+			appendUnixCommandLineRelaunch(content, processCommandLine.get(), gameDir);
+			return;
+		}
+		if (javaCommand.isPresent() && processArguments.isPresent()) {
+			appendUnixArgumentListRelaunch(content, javaCommand.get(), List.of(processArguments.get()), gameDir);
+			return;
+		}
+		RelaunchCommand runtimeCommand = runtimeRelaunchCommand()
+				.orElseThrow(() -> new IOException("Current Java launch command is not available"));
+		appendUnixArgumentListRelaunch(content, runtimeCommand.javaCommand(), runtimeCommand.arguments(), gameDir);
+	}
+
 	static void appendArgumentListRelaunch(
 			StringBuilder content,
 			String javaCommand,
@@ -56,6 +76,27 @@ final class UpdaterRelaunchSupport {
 				.append("-ArgumentList @('/d', '/s', '/c', 'start \"\" ' + $commandLine)")
 				.append(" -WorkingDirectory ").append(psQuote(gameDir.toString())).append(" -PassThru\n");
 		content.append("Write-Step ('relaunch requested with original command line, pid=' + $startedProcess.Id)\n");
+	}
+
+	static void appendUnixArgumentListRelaunch(
+			StringBuilder content,
+			String javaCommand,
+			List<String> arguments,
+			Path gameDir
+	) {
+		content.append("cd ").append(shQuote(gameDir.toString())).append("\n");
+		content.append("nohup ").append(shQuote(javaCommand));
+		for (String argument : arguments) {
+			content.append(' ').append(shQuote(argument));
+		}
+		content.append(" >/dev/null 2>&1 &\n");
+		content.append("Write-Step \"relaunch requested with quoted argv, pid=$!\"\n");
+	}
+
+	static void appendUnixCommandLineRelaunch(StringBuilder content, String commandLine, Path gameDir) {
+		content.append("cd ").append(shQuote(gameDir.toString())).append("\n");
+		content.append("nohup sh -c ").append(shQuote("exec " + commandLine)).append(" >/dev/null 2>&1 &\n");
+		content.append("Write-Step \"relaunch requested with original command line, pid=$!\"\n");
 	}
 
 	static Optional<RelaunchCommand> runtimeRelaunchCommand() {
@@ -127,6 +168,12 @@ final class UpdaterRelaunchSupport {
 				.collect(Collectors.joining(" "));
 	}
 
+	static String unixCommandLine(List<String> arguments) {
+		return arguments.stream()
+				.map(UpdaterRelaunchSupport::shQuote)
+				.collect(Collectors.joining(" "));
+	}
+
 	private static String windowsQuoteArgument(String argument) {
 		if (argument.isEmpty()) {
 			return "\"\"";
@@ -188,6 +235,10 @@ final class UpdaterRelaunchSupport {
 
 	private static String psQuote(String value) {
 		return "'" + value.replace("'", "''") + "'";
+	}
+
+	private static String shQuote(String value) {
+		return "'" + value.replace("'", "'\"'\"'") + "'";
 	}
 
 	record RelaunchCommand(String javaCommand, List<String> arguments) {

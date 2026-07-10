@@ -139,6 +139,15 @@ public abstract class MinecartPhysicsMixin implements LinkedMinecart {
 			cart.setVelocity(velocity.x * 0.72, velocity.y, velocity.z * 0.72);
 			return;
 		}
+		if (megastructure$isOnCurve(cart)) {
+			double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+			if (horizontalSpeed > MEGASTRUCTURE_MAX_SPEED) {
+				double scale = MEGASTRUCTURE_MAX_SPEED / horizontalSpeed;
+				cart.setVelocity(velocity.x * scale, velocity.y, velocity.z * scale);
+			}
+			megastructure$hadPassenger = true;
+			return;
+		}
 
 		double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 		Vec3d direction;
@@ -238,6 +247,9 @@ public abstract class MinecartPhysicsMixin implements LinkedMinecart {
 		if (!insideMegastructure || !cart.isOnRail()) {
 			return;
 		}
+		if (megastructure$isOnCurve(cart)) {
+			return;
+		}
 		Vec3d railDirection = megastructure$railDirection(cart);
 		if (railDirection == null) {
 			return;
@@ -277,8 +289,7 @@ public abstract class MinecartPhysicsMixin implements LinkedMinecart {
 		return switch (shape) {
 			case EAST_WEST, ASCENDING_EAST, ASCENDING_WEST -> new Vec3d(1.0, 0.0, 0.0);
 			case NORTH_SOUTH, ASCENDING_NORTH, ASCENDING_SOUTH -> new Vec3d(0.0, 0.0, 1.0);
-			case SOUTH_EAST, NORTH_WEST -> new Vec3d(1.0, 0.0, 1.0).normalize();
-			case SOUTH_WEST, NORTH_EAST -> new Vec3d(-1.0, 0.0, 1.0).normalize();
+			case SOUTH_EAST, NORTH_WEST, SOUTH_WEST, NORTH_EAST -> null;
 		};
 	}
 
@@ -303,6 +314,20 @@ public abstract class MinecartPhysicsMixin implements LinkedMinecart {
 		return Math.abs(look.dotProduct(first)) >= Math.abs(look.dotProduct(second))
 				? first.multiply(look.dotProduct(first) >= 0.0 ? 1.0 : -1.0)
 				: second.multiply(look.dotProduct(second) >= 0.0 ? 1.0 : -1.0);
+	}
+
+	@Unique
+	private static boolean megastructure$isCurve(RailShape shape) {
+		return shape == RailShape.NORTH_EAST
+				|| shape == RailShape.NORTH_WEST
+				|| shape == RailShape.SOUTH_EAST
+				|| shape == RailShape.SOUTH_WEST;
+	}
+
+	@Unique
+	private static boolean megastructure$isOnCurve(AbstractMinecartEntity cart) {
+		RailShape shape = megastructure$railShape(cart);
+		return shape != null && megastructure$isCurve(shape);
 	}
 
 	@Unique

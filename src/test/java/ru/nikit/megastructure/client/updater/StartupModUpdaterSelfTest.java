@@ -16,6 +16,8 @@ public final class StartupModUpdaterSelfTest {
 		assertOriginalCommandLineHasRelaunchPriority();
 		assertTransientHttpStatusesAreRetried();
 		assertWindowsArgumentLineQuotesSpacedPaths();
+		assertUnixArgumentLineQuotesSpacedPaths();
+		assertUnixRelaunchUsesQuotedArgv();
 		System.out.println("StartupModUpdater self-test passed");
 	}
 
@@ -106,6 +108,41 @@ public final class StartupModUpdaterSelfTest {
 		require(commandLine.contains("\"C:\\Games\\Project Imperfect Salvation\""),
 				"gameDir path with spaces should be quoted");
 		require(commandLine.endsWith("\"Project Eden\""), "final spaced argument should be quoted");
+	}
+
+	private static void assertUnixArgumentLineQuotesSpacedPaths() {
+		String commandLine = UpdaterRelaunchSupport.unixCommandLine(List.of(
+				"-Xmx2G",
+				"-cp",
+				"/home/user/Project Imperfect Salvation/libraries/fabric loader.jar",
+				"net.fabricmc.loader.impl.launch.knot.KnotClient",
+				"--gameDir",
+				"/home/user/Project Imperfect Salvation",
+				"--username",
+				"Project Eden's Host"
+		));
+		require(commandLine.contains("'/home/user/Project Imperfect Salvation/libraries/fabric loader.jar'"),
+				"unix classpath path with spaces should be quoted");
+		require(commandLine.contains("'/home/user/Project Imperfect Salvation'"),
+				"unix gameDir path with spaces should be quoted");
+		require(commandLine.endsWith("'Project Eden'\"'\"'s Host'"), "unix single quote should be escaped");
+	}
+
+	private static void assertUnixRelaunchUsesQuotedArgv() {
+		StringBuilder script = new StringBuilder();
+		UpdaterRelaunchSupport.appendUnixArgumentListRelaunch(
+				script,
+				"/home/user/Java Runtime/bin/java",
+				List.of("-Xmx2G", "-cp", "/home/user/Project Imperfect Salvation/libraries/fabric loader.jar",
+						"net.fabricmc.loader.impl.launch.knot.KnotClient", "--username", "Project Eden"),
+				Path.of("/home/user/Project Imperfect Salvation")
+		);
+		String content = script.toString();
+		require(content.contains("cd '/home/user/Project Imperfect Salvation'"), "unix working directory missing");
+		require(content.contains("nohup '/home/user/Java Runtime/bin/java'"), "unix java command should be quoted");
+		require(content.contains("'/home/user/Project Imperfect Salvation/libraries/fabric loader.jar'"),
+				"unix argument path should be quoted");
+		require(content.contains("pid=$!"), "unix relaunch should log background pid");
 	}
 
 	private static void require(boolean condition, String message) {

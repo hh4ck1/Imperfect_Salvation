@@ -31,6 +31,31 @@ current_active_state:
 - active_story_systems: server start gate, narrative audio queue, global tasks screen/progression
 - active_worldgen_passes: vanilla ore features plus runtime modded wall ore veins; enriched oasis trees; upgraded rift bridges and wall-entry corridors
 
+## 2026-07-10 - Codex minecart curved rail physics and NeepMeat recipe fix
+
+Request scope:
+- Minecarts bounced into turned rails and reversed instead of following curved railway turns.
+- The megastructure salvage recipe must create NeepMeat crushed ender pearl, not a vanilla ender pearl, and must not require amethyst.
+
+Findings:
+- Generated railway turns already use normal `minecraft:rail` curved `RailShape` states.
+- The bad turn behaviour came from custom megastructure minecart physics projecting velocity onto diagonal vectors on curved rails and accelerating passenger carts during the turn, overriding vanilla curve handling.
+
+Implemented:
+- `MinecartPhysicsMixin` now treats `NORTH_EAST`, `NORTH_WEST`, `SOUTH_EAST`, and `SOUTH_WEST` rail shapes as vanilla-controlled curve sections.
+- Custom passenger cruise acceleration and course-locking are skipped while the cart is on a curved rail.
+- Curves still cap excessive horizontal speed, so the 1.5x railway speed logic cannot launch carts through the turn.
+- Curved rail shapes no longer return synthetic diagonal course vectors from `megastructure$railDirection(...)`.
+- Added `crushed_ender_pearl_from_megastructure_salvage.json`, producing `neepmeat:crushed_ender_pearl`.
+- Removed amethyst from that salvage recipe and did not add any new vanilla `minecraft:ender_pearl` crafting recipe.
+- Bumped local mod version to `0.1.39`, copied `releases\Imperfect_salvation-0.1.39.jar`, and updated `manifest.json` to that release/hash.
+
+Validation:
+- `.\gradlew.bat compileJava` => SUCCESS.
+- `.\gradlew.bat build` => SUCCESS.
+- Confirmed release jar contains `fabric.mod.json`, `native/windows-x64/megastructure_blackhole_bridge.dll`, and `MinecartPhysicsMixin.class`.
+- Release jar SHA-256: `9c89fcc707a82c770f933ca5296c1417b1a77e0d425bc9afd8a0d28640ddc720`.
+
 ## 2026-07-04 - Codex void-facing tunnel windows and connector cleanup
 
 Request scope:
@@ -5175,3 +5200,182 @@ Verification:
 - Release jar written to `releases/Imperfect_salvation-0.1.34.jar`.
 - Release jar SHA-256:
   `5071ccb073d460622a17bdc48d412aa0e66fb01b0279771f20f3874574eabe36`.
+
+
+## 2026-07-10 - Create collector visual fix, NeepMeat Russian localization, ender pearl recipe
+
+User request:
+- The previous crash fix stopped the crash, but the Create/collector contraption no longer works visually while its physics remains.
+- Translate NeepMeat source/resources into Russian with careful atmosphere/meaning preservation, including PLC programming descriptions without changing instruction arguments.
+- Compile it for project use.
+- Add an ender pearl recipe that is not cheap, but is achievable with resources available in the megastructure survival route.
+
+Implemented in Imperfect_salvation:
+- Reworked `CreateVirtualRenderWorldLightMixin`.
+- The previous version cancelled the whole Create `VirtualRenderWorld.runLightEngine()` when Starlight was installed.
+- The new version no longer cancels the full method.
+- It redirects only the two Starlight-sensitive lighting calls inside Create virtual render worlds:
+  - `LightingProvider.setRetainData(ChunkPos, false)`;
+  - `LightingProvider.doLightUpdates()`.
+- Runtime exceptions from those calls are suppressed only when `starlight` is loaded; without Starlight the exception is rethrown.
+- This should preserve Create contraption visual setup while still avoiding the known Starlight crash path.
+- Added `ender_pearl_from_megastructure_salvage`:
+  - pattern `AGA / RMR / CGC`;
+  - `A` = amethyst shard;
+  - `G` = glowstone dust;
+  - `R` = rotten flesh;
+  - `M` = `megastructure:edible_moss`;
+  - `C` = copper ingot;
+  - result = 1 ender pearl.
+- Bumped local project version to `0.1.35`.
+
+NeepMeat localization:
+- Created a separate 1.20.1 working copy at `NeepMeat_ru_1.20.1/` from the local NeepMeat `1.20/dev` branch.
+- Added Russian NeepMeat resources:
+  - `assets/neepmeat/lang/ru_ru.json` with 1176 keys;
+  - `assets/neepmeat/guide/ru_ru/**`;
+  - `assets/neepmeat/docs/thord/ru_ru/thord_words.md`.
+- Preserved technical identifiers and code terms in PLC/THORD/NEEPASM documentation:
+  - instruction names such as `AREA3`, `MOVE`, `IHANDLER`, `EXTFETCH`;
+  - stack signatures such as `( addr pos1 pos2 -- )`;
+  - frontmatter fields such as `id:` and `lookup:`;
+  - guide directives such as `\columns[fit=second]`, `\image`, `\item_render`;
+  - `%s` placeholders and Minecraft formatting codes.
+- Performed cleanup passes for important terminology:
+  - PLC kept as `PLC`;
+  - NEEPASM, THORD, NEEPBus kept as original terms;
+  - `actuator` translated as `исполнитель` where it describes PLC world interaction;
+  - `Charnel Compactor` adjusted to `Скотобойный пресс`;
+  - `Transient Ichor` adjusted to `преходящий ихор`;
+  - `Blood Bubble` adjusted to `кровяной пузырь`.
+
+Build/install:
+- `.\gradlew.bat build` for Imperfect_salvation completed successfully.
+- Local release jar written to `releases/Imperfect_salvation-0.1.35.jar`.
+- Installed local Imperfect_salvation jar to:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\Imperfect_salvation.jar`.
+- Imperfect_salvation 0.1.35 SHA-256:
+  `6361716e09a73fe11f64c52526ea3b9a6c5fd0e7977cbda12e09c92b72c55a60`.
+- Direct NeepMeat Gradle build with Java 26 failed because the project requires Java 17-compatible bytecode handling.
+- Direct NeepMeat Gradle build with Java 17 hung for more than 15 minutes in Gradle/Loom setup and produced no jar.
+- To make the translation usable now, a localized runtime jar was built by injecting the new Russian resources into the already working project jar:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\neepmeat-0.29.2-beta+1.20.1.jar`.
+- Original NeepMeat jar was backed up as:
+  `C:\Users\nikit\Desktop\Project Imperfect Salvation\mods\neepmeat-0.29.2-beta+1.20.1.jar.original-bak`.
+- Localized NeepMeat jar SHA-256:
+  `b664992074395ca35befd002c0ef760340ffe86e2408db57d84729be198e53e4`.
+- Verified installed NeepMeat jar contains:
+  - `assets/neepmeat/lang/ru_ru.json`;
+  - `assets/neepmeat/guide/ru_ru/index_ru_ru.json`;
+  - `assets/neepmeat/docs/thord/ru_ru/thord_words.md`.
+
+Notes:
+- Minecraft was not stopped.
+- GitHub was not updated in this step.
+
+## 2026-07-10 - Packaged Vulkan native bridge and updater manifest bump
+
+Request:
+- Make Vulkan effects work when players receive only the `Imperfect_salvation` mod jar.
+- Inspect player logs where the automatic updater did not update the mod.
+- Keep the updater path-agnostic across launchers and install directories.
+
+Findings:
+- The active Vulkan bridge loaded only from:
+  - `-Dmegastructure.blackhole.native=...`;
+  - `<gameDir>\natives\megastructure_blackhole_bridge.dll`;
+  - `java.library.path`.
+- The installed `Imperfect_salvation.jar` did not contain the native DLL, so sending only the jar could not make Vulkan effects work for other players.
+- Player logs showed `megastructure 0.1.34`.
+- Local `manifest.json` still pointed to `0.1.34`, so the updater correctly treated that client as already current and did not download anything.
+- The player crash report is a separate render-memory issue:
+  `Sodium ChunkBuilderMeshingTask -> OutOfMemoryError`.
+- `latest (4).log` also shows Voxy/gravestones/Sodium compatibility spam around
+  `BakedBlockEntityModel$BakedVertices does not implement VertexBufferWriter`.
+
+Changes:
+- `build.gradle`
+  - Packages `native/blackhole_bridge/build/megastructure_blackhole_bridge.dll`
+    into release jars at:
+    `native/windows-x64/megastructure_blackhole_bridge.dll`.
+- `BlackHoleNativeBridge`
+  - Tries to load the packaged native library before the external `natives` folder.
+  - Extracts it into:
+    `<gameDir>\.imperfect_salvation_natives\<version>\windows-x64\megastructure_blackhole_bridge.dll`.
+  - Keeps the explicit system property, external `natives` folder, and `java.library.path` fallbacks.
+- `StartupModUpdater`
+  - Logs when the updater is disabled by config.
+  - Logs when no update is needed, including local version, manifest version, and target filename.
+- Bumped `mod_version` to `0.1.36`.
+- Updated local `manifest.json` to:
+  - `version`: `0.1.36`;
+  - `jar_url`: `https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/releases/Imperfect_salvation-0.1.36.jar`;
+  - `file_name`: `Imperfect_salvation.jar`.
+
+Validation:
+- `JAVA_HOME=C:\Program Files\Java\jdk-17` `.\gradlew.bat build` completed successfully.
+- Release jar written to:
+  `releases/Imperfect_salvation-0.1.36.jar`.
+- Confirmed the release jar contains:
+  `native/windows-x64/megastructure_blackhole_bridge.dll`.
+- Direct updater self-test completed successfully:
+  `java -cp "build\classes\java\main;build\classes\java\test" ru.nikit.megastructure.client.updater.StartupModUpdaterSelfTest`.
+- `releases/Imperfect_salvation-0.1.36.jar` SHA-256:
+  `ee2085ff941135dc2336de2a740340ffcd0985f47d55c706465781a4c1afdfb9`.
+
+Notes:
+- The local active game jar was not manually replaced, so the startup updater can still be tested honestly.
+- GitHub still needs the new release jar and `manifest.json` for remote clients to receive `0.1.36`.
+- The NeepMeat translation is installed as resources inside the compatible 1.20.1 jar, not as a full source-compiled NeepMeat binary, because the source Gradle/Loom build did not complete in a practical time window.
+
+## 2026-07-10 - Path-agnostic updater audit and cross-platform helper hardening
+
+Request:
+- Logically audit the automatic update/native-loading system so it works with arbitrary game paths, launchers, and devices as far as possible from inside the mod.
+
+Findings:
+- `StartupModUpdater.checkOnStartup(...)` was called from both the common initializer and the client initializer.
+- On a normal client this could start two updater threads in the same process.
+- The previous helper script path was Windows-only PowerShell.
+- Therefore Linux/macOS clients or servers could download an update but could not apply/relaunch through the existing helper.
+- Vulkan native packaging is currently self-contained only for Windows x64 because only `megastructure_blackhole_bridge.dll` exists in the project.
+
+Changes:
+- Added an `AtomicBoolean` guard in `StartupModUpdater` so the update check starts only once per JVM process even if both common and client entrypoints call it.
+- Kept Windows PowerShell helper behavior for Windows.
+- Added POSIX `.sh` helper generation for non-Windows systems:
+  - waits for the old Minecraft/server Java process by PID;
+  - forces termination only if the process does not exit in time;
+  - moves/renames jars with shell-quoted paths;
+  - relaunches through `/bin/sh`.
+- Added Unix relaunch helpers in `UpdaterRelaunchSupport`.
+- Relaunch order remains:
+  - original `ProcessHandle.Info.commandLine()` when available;
+  - `ProcessHandle.Info.command()` plus `arguments()` when available;
+  - runtime fallback from current Java executable, JVM arguments, classpath, and `sun.java.command`.
+- Added updater self-tests for Unix shell quoting and Unix relaunch script generation.
+- Bumped `mod_version` to `0.1.37`.
+- Updated local `manifest.json` to:
+  - `version`: `0.1.37`;
+  - `jar_url`: `https://raw.githubusercontent.com/hh4ck1/Imperfect_Salvation/main/releases/Imperfect_salvation-0.1.37.jar`;
+  - `file_name`: `Imperfect_salvation.jar`.
+
+Validation:
+- `JAVA_HOME=C:\Program Files\Java\jdk-17` `.\gradlew.bat build` completed successfully.
+- Direct updater self-test completed successfully:
+  `java -cp "build\classes\java\main;build\classes\java\test" ru.nikit.megastructure.client.updater.StartupModUpdaterSelfTest`.
+- Release jar written to:
+  `releases/Imperfect_salvation-0.1.37.jar`.
+- Confirmed the release jar contains:
+  - `native/windows-x64/megastructure_blackhole_bridge.dll`;
+  - `StartupModUpdater.class`;
+  - `UpdaterRelaunchSupport.class`;
+  - `BlackHoleNativeBridge.class`.
+- `releases/Imperfect_salvation-0.1.37.jar` SHA-256:
+  `5d6e5f98b78a2acd671f81c36b4c8ccdb0f3ca99ae030373e073987fe7219fac`.
+
+Limits:
+- No in-mod relaunch system can be absolutely guaranteed for every launcher because launchers may hide process arguments, use one-time authentication/session values, or wrap Java in native launchers.
+- The updater now covers the normal launch shapes exposed to Java/Fabric without using fixed absolute paths.
+- Vulkan native rendering still needs native binaries per OS/architecture; the jar currently packages Windows x64 only.
+- GitHub still needs the new release jar and `manifest.json` before remote clients can receive `0.1.37`.
