@@ -252,6 +252,7 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 	public void generateFeatures(StructureWorldAccess world, Chunk chunk, StructureAccessor structureAccessor) {
 		super.generateFeatures(world, chunk, structureAccessor);
 		populateCorridorLootChests(world, chunk);
+		populateRoomLootChests(world, chunk);
 	}
 
 	@Override
@@ -799,6 +800,10 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 		if (chest != null) {
 			return chest;
 		}
+		chest = roomLootChestState(district, x, y, z, air);
+		if (chest != null) {
+			return chest;
+		}
 
 		if (air) {
 			return BlockPalette.AIR;
@@ -823,6 +828,10 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 
 	private int districtType(int x, int z) {
 		return districtTypeAt(x, z, worldVariantSeed);
+	}
+
+	int districtAt(int x, int z) {
+		return districtType(x, z);
 	}
 
 	static int districtTypeAt(int x, int z) {
@@ -8015,6 +8024,79 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 				.with(ChestBlock.WATERLOGGED, false);
 	}
 
+	BlockState roomLootChestState(int district, int x, int y, int z, boolean air) {
+		if (!air || !isLargeRoomLootDistrict(district) || isPrimaryRift(x, z)
+				|| y <= settings.floorY() + 1 || y >= settings.ceilingY() - 2
+				|| isSpawnPrecinctAir(x, y, z) || isOasisProtectedRoute(x, y, z)
+				|| isRailwayAir(x, y, z) || isDistrictConnectorAt(x, z, 8)) {
+			return null;
+		}
+		if (Math.abs(x) < 224 && Math.abs(z) < 224) {
+			return null;
+		}
+		if (isStructureAir(district, x, y - 1, z)
+				|| !isStructureAir(district, x, y + 1, z)
+				|| !isStructureAir(district, x, y + 2, z)) {
+			return null;
+		}
+
+		int cell = 152;
+		int cellX = MegastructureMath.floorDiv(x, cell);
+		int cellZ = MegastructureMath.floorDiv(z, cell);
+		long hash = MegastructureMath.hash(worldVariantSeed, cellX, cellZ, 2971);
+		if (Math.floorMod(hash, 4) != 0) {
+			return null;
+		}
+		int anchorX = cellX * cell + MegastructureMath.range(hash >>> 8, 22, cell - 23);
+		int anchorZ = cellZ * cell + MegastructureMath.range(hash >>> 18, 22, cell - 23);
+		if (x != anchorX || z != anchorZ) {
+			return null;
+		}
+		if (oasisOverlayState(district, x, y - 1, z) != null || looseStoneScatterState(district, x, y, z, true) != null) {
+			return null;
+		}
+
+		Direction facing = switch (Math.floorMod(hash >>> 30, 4)) {
+			case 0 -> Direction.NORTH;
+			case 1 -> Direction.SOUTH;
+			case 2 -> Direction.WEST;
+			default -> Direction.EAST;
+		};
+		return Blocks.CHEST.getDefaultState()
+				.with(ChestBlock.FACING, facing)
+				.with(ChestBlock.WATERLOGGED, false);
+	}
+
+	private boolean isLargeRoomLootDistrict(int district) {
+		return district == DISTRICT_MONOLITH_HALL
+				|| district == DISTRICT_COLUMN_FOREST
+				|| district == DISTRICT_BLOCK_TOWERS
+				|| district == DISTRICT_TANK_CLUSTER
+				|| district == DISTRICT_SCAFFOLD
+				|| district == DISTRICT_TRANSIT_NEXUS
+				|| district == DISTRICT_REACTOR_CATHEDRAL
+				|| district == DISTRICT_HANGING_ARCHIVE
+				|| district == DISTRICT_INVERTED_PYRAMID
+				|| district == DISTRICT_RING_VAULT
+				|| district == DISTRICT_MACHINE_NAVE
+				|| district == DISTRICT_FRACTURED_HABITAT
+				|| district == DISTRICT_CONDUIT_BASILICA
+				|| district == DISTRICT_RESERVOIR_HALL
+				|| district == DISTRICT_SUSPENDED_CITY
+				|| district == DISTRICT_IRIS_CHASM
+				|| district == DISTRICT_MACHINE_ROOT_VAULT
+				|| district == DISTRICT_TILTED_STACKS
+				|| district == DISTRICT_SILENT_FOUNDRY
+				|| district == DISTRICT_COLOSSUS_LIFT
+				|| district == DISTRICT_FOLDED_CITY
+				|| district == DISTRICT_UPPER_RIM_CITY
+				|| district == DISTRICT_ORBITAL_WEB_CORE
+				|| district == DISTRICT_CROWN_SPIRE
+				|| district == DISTRICT_GLOBE_MONUMENT
+				|| district == DISTRICT_VOID_ALTAR
+				|| district == DISTRICT_ATOM_STORM_ARRAY;
+	}
+
 	private boolean isExplorationCacheDistrict(int district) {
 		return district == DISTRICT_MONOLITH_HALL
 				|| district == DISTRICT_COLUMN_FOREST
@@ -8065,14 +8147,40 @@ public final class MegastructureChunkGenerator extends ChunkGenerator {
 					world.setBlockState(mutable, state, 2);
 					BlockEntity blockEntity = world.getBlockEntity(mutable);
 					if (blockEntity instanceof ChestBlockEntity chest) {
-						fillCorridorLootChest(chest, x, y, z);
+						fillExplorationLootChest(chest, x, y, z);
 					}
 				}
 			}
 		}
 	}
 
-	private void fillCorridorLootChest(ChestBlockEntity chest, int x, int y, int z) {
+	private void populateRoomLootChests(StructureWorldAccess world, Chunk chunk) {
+		ChunkPos chunkPos = chunk.getPos();
+		BlockPos.Mutable mutable = new BlockPos.Mutable();
+		int minY = Math.max(chunk.getBottomY(), settings.floorY() + 1);
+		int maxY = Math.min(chunk.getTopY(), settings.ceilingY());
+		for (int localX = 0; localX < 16; localX++) {
+			int x = chunkPos.getStartX() + localX;
+			for (int localZ = 0; localZ < 16; localZ++) {
+				int z = chunkPos.getStartZ() + localZ;
+				int district = districtType(x, z);
+				for (int y = minY; y < maxY; y++) {
+					mutable.set(x, y, z);
+					BlockState state = chunk.getBlockState(mutable);
+					if (!state.isOf(Blocks.CHEST) || roomLootChestState(district, x, y, z, true) == null) {
+						continue;
+					}
+					world.setBlockState(mutable, state, 2);
+					BlockEntity blockEntity = world.getBlockEntity(mutable);
+					if (blockEntity instanceof ChestBlockEntity chest) {
+						fillExplorationLootChest(chest, x, y, z);
+					}
+				}
+			}
+		}
+	}
+
+	void fillExplorationLootChest(ChestBlockEntity chest, int x, int y, int z) {
 		long hash = MegastructureMath.hash(worldVariantSeed, x, z, y ^ 2939);
 		int stacks = MegastructureMath.range(hash, 4, 9);
 		for (int stack = 0; stack < stacks; stack++) {

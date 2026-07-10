@@ -31,6 +31,63 @@ current_active_state:
 - active_story_systems: server start gate, narrative audio queue, global tasks screen/progression
 - active_worldgen_passes: vanilla ore features plus runtime modded wall ore veins; enriched oasis trees; upgraded rift bridges and wall-entry corridors
 
+## 2026-07-10 - Codex vanilla monster spawning rate and ceiling flag
+
+Request scope:
+- Make mob spawning absolutely vanilla mechanically, only reduced to 25% of vanilla.
+- Do not add endermen.
+- Remove the custom 18-mob local cap.
+- Disable the dimension `has_ceiling` flag.
+
+Implemented:
+- Removed the custom tick-based mob spawning loop from `MegastructureMobSystem`.
+- Added vanilla biome spawn entries for the existing allowed hostile set:
+  - zombie;
+  - skeleton;
+  - spider;
+  - creeper.
+- Endermen and phantoms are not added.
+- Added `SpawnHelperMixin`, which cancels 75% of vanilla monster spawn passes only in worlds using `MegastructureChunkGenerator`.
+- Because spawning now goes through vanilla `SpawnHelper`, vanilla mechanics apply:
+  - vanilla light checks;
+  - vanilla spawn position checks;
+  - vanilla player distance rules;
+  - vanilla mob caps.
+- Set `data/megastructure/dimension_type/megastructure.json` `has_ceiling` from `true` to `false`.
+- Bumped local mod version to `0.1.41`.
+- Updated `manifest.json` to `0.1.41`.
+
+Validation:
+- `.\gradlew.bat compileJava` => SUCCESS.
+- `.\gradlew.bat build` => SUCCESS.
+- Release jar SHA-256: `1ae53ed231e8bbbf7b233acdb7c93bccf57148245b725ec8d7817b113bc55d92`.
+
+## 2026-07-10 - Codex large-room exploration chest retrofit
+
+Request scope:
+- Add some chest spawns to large rooms so exploration has a reason.
+- Avoid overfilling rooms with loot.
+- Make it work in already-created worlds, not only freshly created worlds/new generation.
+
+Implemented:
+- Added a second loot chest placement path for large exploration-room districts.
+- Room chests use a coarser deterministic grid than corridor caches, so they are occasional rather than dense.
+- Placement is restricted to valid floor positions:
+  - target block must be air;
+  - block below must be solid/generated structure, not another air volume;
+  - two blocks above must be clear;
+  - spawn precinct, protected oasis routes, primary rift, railway air, and connector volumes are excluded.
+- The existing exploration loot stack generator is reused, so room chests contain the same survival/progression resources as corridor caches.
+- New chunks receive room chests during normal feature generation.
+- Existing worlds receive room chests through `LoadedChunkBlockUpdater` when chunks load.
+- Added `RetrofittedRoomChestState`, which records processed chunks once, preventing chest respawn after players break/loot them.
+- Bumped local mod version to `0.1.40`, copied `releases\Imperfect_salvation-0.1.40.jar`, and updated `manifest.json` to that release/hash.
+
+Validation:
+- `.\gradlew.bat compileJava` => SUCCESS.
+- `.\gradlew.bat build` => SUCCESS.
+- Release jar SHA-256: `7ee9814ebdc3a521784b028398d68178fabdcb8981e8cee02f456abc0c042409`.
+
 ## 2026-07-10 - Codex minecart curved rail physics and NeepMeat recipe fix
 
 Request scope:

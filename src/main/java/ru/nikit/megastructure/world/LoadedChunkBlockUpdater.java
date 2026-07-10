@@ -9,6 +9,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.FallingBlock;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.fluid.Fluid;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.fluid.Fluids;
@@ -30,7 +31,7 @@ public final class LoadedChunkBlockUpdater {
 	private static final String ENCASED_VASCULAR_CONDUIT = "encased_vascular_conduit";
 	private static final Queue<PendingChunk> PENDING_CHUNKS = new ConcurrentLinkedQueue<>();
 
-	private record PendingChunk(ServerWorld world, int chunkX, int chunkZ) {
+	private record PendingChunk(ServerWorld world, int chunkX, int chunkZ, MegastructureChunkGenerator generator) {
 	}
 
 	private LoadedChunkBlockUpdater() {
@@ -42,10 +43,10 @@ public final class LoadedChunkBlockUpdater {
 	}
 
 	private static void queueLoadedChunk(ServerWorld world, WorldChunk chunk) {
-		if (!(world.getChunkManager().getChunkGenerator() instanceof MegastructureChunkGenerator)) {
+		if (!(world.getChunkManager().getChunkGenerator() instanceof MegastructureChunkGenerator generator)) {
 			return;
 		}
-		PENDING_CHUNKS.offer(new PendingChunk(world, chunk.getPos().x, chunk.getPos().z));
+		PENDING_CHUNKS.offer(new PendingChunk(world, chunk.getPos().x, chunk.getPos().z, generator));
 	}
 
 	private static void processQueuedChunks(ServerWorld tickWorld) {
@@ -61,13 +62,13 @@ public final class LoadedChunkBlockUpdater {
 						false
 				);
 				if (chunk != null) {
-					updateLoadedChunk(pending.world(), chunk);
+					updateLoadedChunk(pending.world(), chunk, pending.generator());
 				}
 			}
 		}
 	}
 
-	private static void updateLoadedChunk(ServerWorld world, WorldChunk chunk) {
+	private static void updateLoadedChunk(ServerWorld world, WorldChunk chunk, MegastructureChunkGenerator generator) {
 		BlockPos.Mutable mutable = new BlockPos.Mutable();
 		int startX = chunk.getPos().getStartX();
 		int startZ = chunk.getPos().getStartZ();
@@ -101,6 +102,42 @@ public final class LoadedChunkBlockUpdater {
 					}
 					if (isVascularConduit(state)) {
 						refreshVascularConduit(world, pos, state);
+					}
+				}
+			}
+		}
+		retrofitRoomLootChests(world, chunk, generator);
+	}
+
+	private static void retrofitRoomLootChests(ServerWorld world, WorldChunk chunk, MegastructureChunkGenerator generator) {
+		RetrofittedRoomChestState retrofitState = RetrofittedRoomChestState.get(world);
+		if (!retrofitState.markProcessed(chunk.getPos().x, chunk.getPos().z)) {
+			return;
+		}
+
+		BlockPos.Mutable mutable = new BlockPos.Mutable();
+		int startX = chunk.getPos().getStartX();
+		int startZ = chunk.getPos().getStartZ();
+		int minY = Math.max(chunk.getBottomY(), generator.getMinimumY() + 1);
+		int maxY = Math.min(chunk.getTopY(), generator.getMinimumY() + generator.getWorldHeight() - 1);
+		for (int localX = 0; localX < 16; localX++) {
+			int x = startX + localX;
+			for (int localZ = 0; localZ < 16; localZ++) {
+				int z = startZ + localZ;
+				int district = generator.districtAt(x, z);
+				for (int y = minY; y < maxY; y++) {
+					mutable.set(x, y, z);
+					if (!world.getBlockState(mutable).isAir()) {
+						continue;
+					}
+					BlockState chestState = generator.roomLootChestState(district, x, y, z, true);
+					if (chestState == null) {
+						continue;
+					}
+					world.setBlockState(mutable, chestState, Block.NOTIFY_ALL);
+					BlockEntity blockEntity = world.getBlockEntity(mutable);
+					if (blockEntity instanceof ChestBlockEntity chest) {
+						generator.fillExplorationLootChest(chest, x, y, z);
 					}
 				}
 			}
